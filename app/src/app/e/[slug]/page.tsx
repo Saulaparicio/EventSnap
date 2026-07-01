@@ -17,7 +17,7 @@ export default async function GuestPage({
 
   if (event.status === 'closed') {
     return (
-      <main className="flex items-center justify-center min-h-screen p-6 text-center">
+      <main className="flex items-center justify-center min-h-screen p-6 text-center bg-[#fcf8fa] text-[#1b1b1d]">
         <div className="space-y-3">
           <h1 className="text-2xl font-bold">{event.name}</h1>
           <p className="text-muted-foreground">Este evento ya cerró. Gracias por participar.</p>
@@ -27,12 +27,6 @@ export default async function GuestPage({
   }
 
   return (
-    <main className="flex flex-col items-center min-h-screen bg-black text-white">
-      <div className="w-full max-w-md py-6 px-4 space-y-2 text-center">
-        <h1 className="text-xl font-bold">{event.name}</h1>
-        <p className="text-sm text-gray-400">Toma una foto y aparecerá en pantalla</p>
-      </div>
-      <CameraUpload slug={slug} />
-    </main>
+    <CameraUpload slug={slug} eventName={event.name} eventDate={event.date} />
   )
 }

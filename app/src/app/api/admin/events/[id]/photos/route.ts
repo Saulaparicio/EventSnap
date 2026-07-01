@@ -23,3 +23,36 @@ export async function GET(
 
   return Response.json(photos)
 }
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+  if (!session?.user?.id) return Response.json({ error: 'No autorizado' }, { status: 401 })
+
+  const { id } = await params
+  const event = await prisma.event.findFirst({ where: { id, orgId: session.user.id } })
+  if (!event) return Response.json({ error: 'Evento no encontrado' }, { status: 404 })
+
+  try {
+    const { status, photoIds } = await request.json()
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return Response.json({ error: 'Estado inválido' }, { status: 400 })
+    }
+
+    const query = {
+      eventId: id,
+      ...(photoIds && Array.isArray(photoIds) ? { id: { in: photoIds } } : {})
+    }
+
+    await prisma.photo.updateMany({
+      where: query,
+      data: { status }
+    })
+
+    return Response.json({ success: true })
+  } catch (err: any) {
+    return Response.json({ error: err.message || 'Error del servidor' }, { status: 500 })
+  }
+}

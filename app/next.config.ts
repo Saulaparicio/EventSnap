@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  allowedDevOrigins: ['192.168.0.7', 'easy-hands-go.loca.lt', 'localhost:3000'],
 }
 
 export default nextConfig

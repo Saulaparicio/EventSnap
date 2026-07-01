@@ -31,14 +31,14 @@ export default function ModerationActions({ photoId, eventId, currentStatus }: P
 
   if (currentStatus === 'approved') {
     return (
-      <Button size="sm" variant="destructive" className="w-full text-xs h-6" onClick={() => moderate('rejected')} disabled={loading}>
+      <Button size="sm" variant="destructive" className="w-full text-xs h-7 rounded-md shadow-none" onClick={() => moderate('rejected')} disabled={loading}>
         Rechazar
       </Button>
     )
   }
 
   return (
-    <Button size="sm" className="w-full text-xs h-6" onClick={() => moderate('approved')} disabled={loading}>
+    <Button size="sm" className="w-full text-xs h-7 rounded-md bg-[#0D9488] hover:bg-[#0D9488]/90 text-white shadow-none font-medium" onClick={() => moderate('approved')} disabled={loading}>
       Aprobar
     </Button>
   )
