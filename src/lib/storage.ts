@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { toBuffer } from '@/lib/utils'
 
 const s3 = new S3Client({
   region: process.env.STORAGE_REGION || 'auto',
@@ -14,11 +15,12 @@ const s3 = new S3Client({
 const BUCKET = process.env.STORAGE_BUCKET_NAME!
 const PUBLIC_URL = process.env.STORAGE_PUBLIC_URL!
 
-export async function uploadFile(key: string, body: Buffer, contentType: string): Promise<string> {
+export async function uploadFile(key: string, body: Buffer | Uint8Array | ArrayBufferLike, contentType: string): Promise<string> {
+  const cleanBody = toBuffer(body)
   await s3.send(new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,
-    Body: body,
+    Body: cleanBody,
     ContentType: contentType,
   }))
   return `${PUBLIC_URL}/${key}`

@@ -34,9 +34,18 @@ export function getAppUrl(req?: Request): string {
   return envUrl ? envUrl.replace(/\/$/, '') : 'http://localhost:3000'
 }
 
-export function toBuffer(arrayBuffer: ArrayBufferLike): Buffer {
-  const view = new Uint8Array(arrayBuffer)
-  const buf = Buffer.alloc(view.byteLength)
-  buf.set(view)
-  return buf
+export function toBuffer(input: any): Buffer {
+  let bytes: Uint8Array
+  if (input instanceof ArrayBuffer || (typeof SharedArrayBuffer !== 'undefined' && input instanceof SharedArrayBuffer)) {
+    bytes = new Uint8Array(input)
+  } else if (ArrayBuffer.isView(input)) {
+    bytes = new Uint8Array(input.buffer, input.byteOffset, input.byteLength)
+  } else {
+    bytes = new Uint8Array(input)
+  }
+
+  const standaloneArrayBuffer = new ArrayBuffer(bytes.byteLength)
+  const uint8 = new Uint8Array(standaloneArrayBuffer)
+  uint8.set(bytes)
+  return Buffer.from(standaloneArrayBuffer)
 }
