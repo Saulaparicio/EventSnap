@@ -27,7 +27,7 @@ export default async function DashboardPage() {
 
   // Calculate stats
   const totalEvents = events.length
-  const totalPhotos = events.reduce((sum, e) => sum + e._count.photos, 0)
+  const totalPhotos = events.reduce((sum: number, e) => sum + e._count.photos, 0)
   const activeEvents = events.filter(e => e.status === 'active').length
   
   // Assuming average photo size is 1.2 MB. Limit is 500 MB for free tier.
