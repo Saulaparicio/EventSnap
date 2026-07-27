@@ -1,4 +1,5 @@
 import sharp, { type OverlayOptions } from 'sharp'
+import { toBuffer } from '@/lib/utils'
 
 export interface WatermarkConfig {
   logo_url?: string
@@ -15,8 +16,7 @@ export interface WatermarkConfig {
 
 async function fetchBuffer(url: string): Promise<Buffer> {
   const res = await fetch(url)
-  const arrayBuffer = await res.arrayBuffer()
-  return Buffer.from(new Uint8Array(arrayBuffer))
+  return toBuffer(await res.arrayBuffer())
 }
 
 export async function applyWatermark(

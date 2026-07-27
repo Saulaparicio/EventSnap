@@ -33,3 +33,10 @@ export function getAppUrl(req?: Request): string {
   }
   return envUrl ? envUrl.replace(/\/$/, '') : 'http://localhost:3000'
 }
+
+export function toBuffer(arrayBuffer: ArrayBufferLike): Buffer {
+  const view = new Uint8Array(arrayBuffer)
+  const buf = Buffer.alloc(view.byteLength)
+  buf.set(view)
+  return buf
+}

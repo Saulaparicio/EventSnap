@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { uploadFile } from '@/lib/storage'
+import { toBuffer } from '@/lib/utils'
 
 export async function POST(request: NextRequest) {
   const session = await auth()
@@ -15,8 +16,7 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'No se recibió ningún archivo' }, { status: 400 })
     }
 
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(new Uint8Array(arrayBuffer))
+    const buffer = toBuffer(await file.arrayBuffer())
     const timestamp = Date.now()
     const fileExtension = file.name.split('.').pop() ?? 'png'
     const key = `organizations/${session.user.id}/logos/${timestamp}.${fileExtension}`

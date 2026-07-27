@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, Camera, Image as ImageIcon, RotateCw, X, Download, Share2, Link2, Users } from 'lucide-react'
+import confetti from 'canvas-confetti'
 
 type ScreenState = 'welcome' | 'camera' | 'preview' | 'confirmation'
 
@@ -159,6 +160,16 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
       } else {
         setWatermarkedUrl(data.watermarkedUrl ?? null)
         changeScreen('confirmation')
+        try {
+          confetti({
+            particleCount: 90,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#0d9488', '#86f2e4', '#ffffff', '#ffb703', '#fb8500']
+          })
+        } catch {
+          // ignore confetti error
+        }
       }
     } catch (err: any) {
       console.error('Error sending photo:', err)

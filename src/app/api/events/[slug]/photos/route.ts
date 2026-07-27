@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { uploadFile } from '@/lib/storage'
 import { applyWatermark, createThumbnail } from '@/lib/watermark'
 import type { WatermarkConfig } from '@/lib/watermark'
+import { toBuffer } from '@/lib/utils'
 import sharp from 'sharp'
 
 // Rate limit: simple in-memory (para producción usar Redis)
@@ -49,8 +50,7 @@ export async function POST(
       return Response.json({ error: 'Foto demasiado grande (máx 15MB)' }, { status: 400 })
     }
 
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(new Uint8Array(arrayBuffer))
+    const buffer = toBuffer(await file.arrayBuffer())
     const meta = await sharp(buffer).metadata()
 
     const timestamp = Date.now()
