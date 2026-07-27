@@ -50,7 +50,15 @@ export async function POST(
       return Response.json({ error: 'Foto demasiado grande (máx 15MB)' }, { status: 400 })
     }
 
-    const buffer = toBuffer(await file.arrayBuffer())
+    const rawBuffer = toBuffer(await file.arrayBuffer())
+    
+    // Optimize photo resolution to max 1920px inside WebP (saves up to 90% storage space)
+    const buffer = toBuffer(
+      await sharp(rawBuffer)
+        .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 82 })
+        .toBuffer()
+    )
     const meta = await sharp(buffer).metadata()
 
     const timestamp = Date.now()
@@ -58,13 +66,12 @@ export async function POST(
     const watermarkedKey = `events/${event.id}/watermarked/${timestamp}.webp`
     const thumbnailKey = `events/${event.id}/thumbnails/${timestamp}.webp`
 
-    const originalUrl = await uploadFile(originalKey, buffer, 'image/webp')
-
     const config = event.watermarkConfig as WatermarkConfig
     const watermarkedBuffer = await applyWatermark(buffer, config)
     const thumbnailBuffer = await createThumbnail(buffer)
 
-    const [watermarkedUrl, thumbnailUrl] = await Promise.all([
+    const [originalUrl, watermarkedUrl, thumbnailUrl] = await Promise.all([
+      uploadFile(originalKey, buffer, 'image/webp'),
       uploadFile(watermarkedKey, watermarkedBuffer, 'image/webp'),
       uploadFile(thumbnailKey, thumbnailBuffer, 'image/webp'),
     ])
