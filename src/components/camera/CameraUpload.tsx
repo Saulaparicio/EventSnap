@@ -146,17 +146,23 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
       fd.append('photo', fileToUpload, 'photo.jpg')
 
       const res = await fetch(`/api/events/${slug}/photos`, { method: 'POST', body: fd })
-      const data = await res.json()
+      let data: any = {}
+      try {
+        data = await res.json()
+      } catch {
+        // Non-JSON response
+      }
 
       if (!res.ok) {
-        toast.error(data.error ?? 'Error al enviar la foto')
+        toast.error(data.error ?? `Error al enviar la foto (${res.status})`)
         changeScreen('preview')
       } else {
         setWatermarkedUrl(data.watermarkedUrl ?? null)
         changeScreen('confirmation')
       }
-    } catch {
-      toast.error('Error de red. Intenta de nuevo.')
+    } catch (err: any) {
+      console.error('Error sending photo:', err)
+      toast.error(err?.message ?? 'Error de conexión al enviar la foto.')
       changeScreen('preview')
     } finally {
       setUploading(false)
