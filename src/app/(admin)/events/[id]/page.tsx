@@ -30,6 +30,8 @@ export default async function EventDetailPage({
     date: (() => { try { return event.date.toISOString() } catch { return new Date().toISOString() } })(),
     status: event.status as 'active' | 'closed' | 'archived',
     qrCodeUrl: event.qrCodeUrl,
+    watermarkConfig: event.watermarkConfig,
+    slideshowConfig: event.slideshowConfig,
   }
 
   const initialPhotos = event.photos.map((p) => ({

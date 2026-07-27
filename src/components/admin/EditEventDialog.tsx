@@ -20,8 +20,8 @@ interface Event {
   name: string
   date: Date | string
   status: string
-  watermarkConfig: any
-  slideshowConfig: any
+  watermarkConfig?: any
+  slideshowConfig?: any
 }
 
 export default function EditEventDialog({ event }: { event: Event }) {

@@ -202,28 +202,63 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
       className="fixed inset-0 bg-black cursor-pointer overflow-hidden h-full w-full select-none"
       onClick={toggleFullscreen}
     >
-      {/* Background Ken Burns layers */}
-      <div className="absolute inset-0 z-0">
+      {/* Background & Centered Photo Presentation */}
+      <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden">
+        {/* Layer 1 */}
         <div
-          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ken-burns ${
+          className={`absolute inset-0 transition-opacity duration-1000 ${
             activeLayer === 1 ? 'opacity-100' : 'opacity-0'
           }`}
-          style={{
-            backgroundImage: layer1Photo ? `url('${layer1Photo.url}')` : 'none',
-          }}
-        />
+        >
+          {layer1Photo && (
+            <>
+              {/* Blurred background filling whole TV/screen */}
+              <div
+                className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-65 scale-110 brightness-75 transition-all duration-1000 ken-burns"
+                style={{ backgroundImage: `url('${layer1Photo.url}')` }}
+              />
+              {/* Foreground full photo in original aspect ratio (vertical or horizontal) */}
+              <div className="absolute inset-0 flex items-center justify-center p-6 md:p-12 z-10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={layer1Photo.url}
+                  alt={eventName}
+                  className="max-h-full max-w-full object-contain rounded-2xl shadow-2xl drop-shadow-[0_25px_60px_rgba(0,0,0,0.9)] transition-transform duration-1000"
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Layer 2 */}
         <div
-          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ken-burns ${
+          className={`absolute inset-0 transition-opacity duration-1000 ${
             activeLayer === 2 ? 'opacity-100' : 'opacity-0'
           }`}
-          style={{
-            backgroundImage: layer2Photo ? `url('${layer2Photo.url}')` : 'none',
-          }}
-        />
+        >
+          {layer2Photo && (
+            <>
+              {/* Blurred background filling whole TV/screen */}
+              <div
+                className="absolute inset-0 bg-cover bg-center filter blur-3xl opacity-65 scale-110 brightness-75 transition-all duration-1000 ken-burns"
+                style={{ backgroundImage: `url('${layer2Photo.url}')` }}
+              />
+              {/* Foreground full photo in original aspect ratio (vertical or horizontal) */}
+              <div className="absolute inset-0 flex items-center justify-center p-6 md:p-12 z-10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={layer2Photo.url}
+                  alt={eventName}
+                  className="max-h-full max-w-full object-contain rounded-2xl shadow-2xl drop-shadow-[0_25px_60px_rgba(0,0,0,0.9)] transition-transform duration-1000"
+                />
+              </div>
+            </>
+          )}
+        </div>
         
         {/* Cinematic overlays */}
-        <div className="absolute inset-0 vignette pointer-events-none" />
-        <div className="absolute inset-0 bg-black/25 pointer-events-none" />
+        <div className="absolute inset-0 vignette pointer-events-none z-10" />
+        <div className="absolute inset-0 bg-black/20 pointer-events-none z-10" />
       </div>
 
       {/* Floating Particles Overlay */}

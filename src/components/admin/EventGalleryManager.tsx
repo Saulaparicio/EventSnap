@@ -24,6 +24,7 @@ import {
   Layers
 } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
+import EditEventDialog from '@/components/admin/EditEventDialog'
 
 interface Photo {
   id: string
@@ -42,6 +43,8 @@ interface EventData {
   date: string
   status: 'active' | 'closed' | 'archived'
   qrCodeUrl: string | null
+  watermarkConfig?: any
+  slideshowConfig?: any
 }
 
 interface Props {
@@ -327,6 +330,7 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
           </div>
           
           <div className="flex gap-2 flex-wrap items-center">
+            <EditEventDialog event={event} />
             <Link
               href={`/live/${event.slug}`}
               target="_blank"
