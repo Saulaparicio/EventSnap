@@ -2,9 +2,10 @@ import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { generateQRBuffer } from '@/lib/qr'
+import { getAppUrl } from '@/lib/utils'
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
@@ -22,7 +23,7 @@ export async function GET(
   }
 
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+    const appUrl = getAppUrl(req)
     const eventUrl = `${appUrl}/e/${event.slug}`
     const qrBuffer = await generateQRBuffer(eventUrl)
 

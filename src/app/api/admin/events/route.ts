@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { uniqueSlug } from '@/lib/slug'
 import { generateQRDataUrl } from '@/lib/qr'
+import { getAppUrl } from '@/lib/utils'
 
 export async function GET() {
   const session = await auth()
@@ -29,7 +30,8 @@ export async function POST(request: NextRequest) {
   }
 
   const slug = await uniqueSlug(name)
-  const eventUrl = `${process.env.NEXT_PUBLIC_APP_URL}/e/${slug}`
+  const baseUrl = getAppUrl(request)
+  const eventUrl = `${baseUrl}/e/${slug}`
   const qrCodeUrl = await generateQRDataUrl(eventUrl)
 
   const event = await prisma.event.create({

@@ -18,3 +18,18 @@ export function formatDate(date: Date | string) {
     return 'Fecha no disponible'
   }
 }
+
+export function getAppUrl(req?: Request): string {
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('192.168.')) {
+    return envUrl.replace(/\/$/, '')
+  }
+  if (req) {
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host')
+    const proto = req.headers.get('x-forwarded-proto') || (host && !host.includes('localhost') ? 'https' : 'http')
+    if (host) {
+      return `${proto}://${host}`
+    }
+  }
+  return envUrl ? envUrl.replace(/\/$/, '') : 'http://localhost:3000'
+}
