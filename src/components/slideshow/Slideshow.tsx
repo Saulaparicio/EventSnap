@@ -306,31 +306,33 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
         </div>
 
         {/* Right: QR Code invite */}
-        {qrCodeUrl && (
-          <div className="flex items-center gap-4 slide-up" style={{ animationDelay: '0.4s' }}>
-            <div className="flex flex-col items-end gap-1 text-right max-w-[200px] text-white">
-              <h3 className="text-sm font-bold flex items-center gap-1">
-                <Sparkles className="w-4 h-4 text-[#86f2e4]" />
-                Sube tus fotos
-              </h3>
-              <p className="text-[10px] text-white/60 leading-normal font-sans">
-                Escanea el código para unirte al álbum en vivo y subir tus capturas.
-              </p>
-            </div>
-            
-            <div className="p-2 qr-gradient rounded-xl shadow-2xl border border-white/5 transition-transform hover:scale-105 duration-300">
-              <div className="relative w-28 h-28 bg-white flex items-center justify-center rounded-lg overflow-hidden border border-[#e5e3dc]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrCodeUrl} alt="QR del evento" className="w-full h-full p-1" />
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 hover:opacity-100 transition-opacity">
-                  <div className="bg-white p-1 rounded-md shadow-md border border-[#e5e3dc]">
-                    <QrCode className="w-5 h-5 text-black" />
-                  </div>
+        <div className="flex items-center gap-4 slide-up z-20" style={{ animationDelay: '0.4s' }}>
+          <div className="hidden sm:flex flex-col items-end gap-1 text-right max-w-[200px] text-white">
+            <h3 className="text-sm font-bold flex items-center gap-1">
+              <Sparkles className="w-4 h-4 text-[#86f2e4]" />
+              Sube tus fotos
+            </h3>
+            <p className="text-[10px] text-white/60 leading-normal font-sans">
+              Escanea el código para unirte al álbum en vivo y subir tus capturas.
+            </p>
+          </div>
+          
+          <div className="p-2 qr-gradient rounded-xl shadow-2xl border border-white/10 transition-transform hover:scale-105 duration-300">
+            <div className="relative w-24 h-24 md:w-28 md:h-28 bg-white flex items-center justify-center rounded-lg overflow-hidden border border-[#e5e3dc]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrCodeUrl ?? `/api/admin/events/${eventId}/qr/qr-${slug}.png`}
+                alt="QR del evento"
+                className="w-full h-full p-1 object-contain"
+              />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 hover:opacity-100 transition-opacity">
+                <div className="bg-white p-1 rounded-md shadow-md border border-[#e5e3dc]">
+                  <QrCode className="w-5 h-5 text-black" />
                 </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
