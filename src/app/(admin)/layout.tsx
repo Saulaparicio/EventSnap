@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
+import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { signOut } from '@/lib/auth'
 import {
@@ -24,6 +25,28 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .join('')
     .toUpperCase()
     .slice(0, 2) ?? 'U'
+
+  // Calculate real storage & photo countdown
+  const orgEvents = await prisma.event.findMany({
+    where: { orgId: session.user.id },
+    select: { id: true },
+  })
+  const eventIds = orgEvents.map((e) => e.id)
+
+  const storageAggregate = await prisma.photo.aggregate({
+    where: { eventId: { in: eventIds } },
+    _sum: { fileSize: true },
+    _count: { _all: true },
+  })
+
+  const totalBytes = storageAggregate._sum.fileSize ?? 0
+  const storageLimitMb = 500
+  const usedMb = Math.round((totalBytes / (1024 * 1024)) * 10) / 10
+  const storagePercent = Math.min(Math.round((usedMb / storageLimitMb) * 100), 100)
+  
+  // Photo countdown (~0.25 MB average optimized WebP per photo upload)
+  const remainingMb = Math.max(0, storageLimitMb - usedMb)
+  const photosRemainingCount = Math.floor(remainingMb / 0.25)
 
   return (
     <div className="min-h-screen bg-[#f7f4f6] text-[#1b1b1d] font-sans flex flex-col">
@@ -127,14 +150,25 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
           </nav>
 
-          {/* Storage + Settings at bottom */}
+          {/* Storage + Photo Countdown at bottom */}
           <div className="p-3 border-t border-[#e5e3dc] space-y-1">
             <div className="px-3 py-2.5 rounded-xl bg-[#f7f4f6] border border-[#e5e3dc]">
-              <p className="text-[10px] font-bold text-[#45464d] uppercase tracking-wider mb-2">Almacenamiento</p>
-              <div className="w-full h-1.5 bg-[#e5e3dc] rounded-full overflow-hidden mb-1.5">
-                <div className="h-full bg-black rounded-full" style={{ width: '2%' }} />
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[10px] font-bold text-[#45464d] uppercase tracking-wider">Almacenamiento</p>
+                <span className="text-[10px] font-extrabold text-[#006a61]">{storagePercent}%</span>
               </div>
-              <p className="text-[10px] text-[#76777d]">0 / 500 MB</p>
+              <div className="w-full h-1.5 bg-[#e5e3dc] rounded-full overflow-hidden mb-2">
+                <div
+                  className="h-full bg-[#006a61] rounded-full transition-all duration-500"
+                  style={{ width: `${Math.max(storagePercent, 2)}%` }}
+                />
+              </div>
+              <div className="space-y-0.5 text-[10px]">
+                <p className="font-semibold text-black">{usedMb} MB / {storageLimitMb} MB</p>
+                <p className="text-[#0d9488] font-bold flex items-center gap-1">
+                  <span>📸</span> Quedan ~{photosRemainingCount.toLocaleString()} fotos
+                </p>
+              </div>
             </div>
             <Link href="/dashboard" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium text-[#45464d] hover:bg-[#f0edef] transition-colors">
               <Settings className="w-4 h-4 shrink-0" />

@@ -23,7 +23,7 @@ export async function applyWatermark(
   imageBuffer: Buffer,
   config: WatermarkConfig
 ): Promise<Buffer> {
-  let image = sharp(imageBuffer)
+  let image = sharp(imageBuffer).rotate()
   const meta = await image.metadata()
   const width = meta.width ?? 1200
   const height = meta.height ?? 800
@@ -119,5 +119,5 @@ export async function applyWatermark(
 }
 
 export async function createThumbnail(imageBuffer: Buffer, size = 400): Promise<Buffer> {
-  return sharp(imageBuffer).resize(size, size, { fit: 'cover' }).webp({ quality: 70 }).toBuffer()
+  return sharp(imageBuffer).rotate().resize(size, size, { fit: 'cover' }).webp({ quality: 70 }).toBuffer()
 }

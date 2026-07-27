@@ -546,13 +546,13 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                         isSelected ? "border-black shadow-md" : "border-[#e5e3dc] hover:border-[#76777d]"
                       )}
                     >
-                      {/* Photo container */}
-                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-100 border-b border-[#e5e3dc]">
+                      {/* Photo container with vertical format fit */}
+                      <div className="relative aspect-square w-full overflow-hidden bg-zinc-950/90 border-b border-[#e5e3dc] flex items-center justify-center">
                         <Image
                           src={displayUrl}
                           alt="Subida de invitado"
                           fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                          className="object-contain p-1 transition-transform duration-500 group-hover:scale-105"
                           sizes="(max-width: 400px) 50vw, 25vw"
                         />
                         

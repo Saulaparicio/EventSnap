@@ -52,9 +52,10 @@ export async function POST(
 
     const rawBuffer = toBuffer(await file.arrayBuffer())
     
-    // Optimize photo resolution to max 1920px inside WebP (saves up to 90% storage space)
+    // Optimize photo resolution to max 1920px inside WebP and auto-orient EXIF (saves up to 90% storage space)
     const buffer = toBuffer(
       await sharp(rawBuffer)
+        .rotate()
         .resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
         .webp({ quality: 82 })
         .toBuffer()
