@@ -49,7 +49,8 @@ export async function POST(
       return Response.json({ error: 'Foto demasiado grande (máx 15MB)' }, { status: 400 })
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer())
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(new Uint8Array(arrayBuffer))
     const meta = await sharp(buffer).metadata()
 
     const timestamp = Date.now()

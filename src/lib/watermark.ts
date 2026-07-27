@@ -15,7 +15,8 @@ export interface WatermarkConfig {
 
 async function fetchBuffer(url: string): Promise<Buffer> {
   const res = await fetch(url)
-  return Buffer.from(await res.arrayBuffer())
+  const arrayBuffer = await res.arrayBuffer()
+  return Buffer.from(new Uint8Array(arrayBuffer))
 }
 
 export async function applyWatermark(

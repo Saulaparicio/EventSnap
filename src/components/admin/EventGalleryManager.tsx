@@ -187,7 +187,7 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
   const maxUploadVal = Math.max(...Object.values(hourlyUploads), 1)
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 w-full">
+    <div className="p-6 md:p-8 space-y-6 w-full max-w-7xl mx-auto flex flex-col gap-6">
       {/* Print-only CSS Styles Injection */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {

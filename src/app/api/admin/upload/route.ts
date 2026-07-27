@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'No se recibió ningún archivo' }, { status: 400 })
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer())
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(new Uint8Array(arrayBuffer))
     const timestamp = Date.now()
     const fileExtension = file.name.split('.').pop() ?? 'png'
     const key = `organizations/${session.user.id}/logos/${timestamp}.${fileExtension}`

@@ -292,18 +292,24 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
 
       {/* SCREEN 2: CAMERA VIEW FINDER */}
       {screen === 'camera' && (
-        <div className="screen-transition fixed inset-0 bg-black z-50 flex flex-col overflow-hidden">
+        <div className="screen-transition fixed inset-0 h-[100dvh] w-full bg-black z-50 flex flex-col overflow-hidden">
           {/* Top Bar */}
-          <div className="flex items-center justify-between px-4 py-3 text-white z-10 bg-gradient-to-b from-black/60 to-transparent">
+          <div className="flex items-center justify-between px-4 py-3 text-white z-20 bg-gradient-to-b from-black/80 to-transparent shrink-0">
             <button className="p-2 cursor-pointer" onClick={() => changeScreen('welcome')}>
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <span className="text-xs font-bold tracking-widest uppercase opacity-90">{eventName}</span>
-            <div className="w-9"></div> {/* balance spacer */}
+            <span className="text-xs font-bold tracking-widest uppercase opacity-90 truncate max-w-[200px]">{eventName}</span>
+            <button
+              onClick={toggleFacingMode}
+              className="p-2 cursor-pointer text-white/90 hover:text-white"
+              title="Cambiar cámara"
+            >
+              <RotateCw className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Viewfinder */}
-          <div className="flex-1 relative bg-zinc-950 flex items-center justify-center">
+          <div className="flex-1 min-h-0 relative bg-zinc-950 flex items-center justify-center overflow-hidden">
             <video
               ref={videoRef}
               autoPlay
@@ -313,7 +319,7 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
             />
             
             {/* Watermark Live Overlay Preview */}
-            <div className="absolute bottom-4 right-4 glass-dark px-3 py-1.5 rounded-lg border border-white/15 scale-90 origin-bottom-right shadow-lg">
+            <div className="absolute bottom-4 right-4 glass-dark px-3 py-1.5 rounded-lg border border-white/15 scale-90 origin-bottom-right shadow-lg z-10">
               <p className="text-[10px] font-semibold text-white/90 uppercase tracking-widest flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#0d9488]"></span>
                 {eventName}
@@ -324,26 +330,33 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
           </div>
 
           {/* Camera Controls */}
-          <div className="bg-black py-8 px-8 flex items-center justify-between z-10 border-t border-zinc-900">
+          <div className="bg-black/95 py-5 pb-10 px-8 flex items-center justify-around z-20 border-t border-zinc-900 shrink-0">
             <button
               onClick={toggleFacingMode}
-              className="text-white hover:bg-zinc-900 p-3 rounded-full transition-colors cursor-pointer"
+              className="text-white hover:bg-zinc-900 p-3 rounded-full transition-colors cursor-pointer flex flex-col items-center gap-1 text-[10px] font-medium"
+              title="Girar cámara"
             >
-              <RotateCw className="w-6 h-6 animate-none" />
+              <RotateCw className="w-6 h-6" />
+              <span>Girar</span>
             </button>
             
             <button
               onClick={capturePhoto}
-              className="camera-btn-outer rounded-full active:scale-90 transition-transform bg-transparent cursor-pointer"
+              className="rounded-full active:scale-95 transition-transform bg-transparent cursor-pointer p-1 border-4 border-white/40 hover:border-white shadow-xl"
+              title="Capturar foto"
             >
-              <div className="w-16 h-16 bg-white rounded-full"></div>
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center active:bg-zinc-200">
+                <Camera className="w-7 h-7 text-black" />
+              </div>
             </button>
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="text-white hover:bg-zinc-900 p-3 rounded-full transition-colors cursor-pointer"
+              className="text-white hover:bg-zinc-900 p-3 rounded-full transition-colors cursor-pointer flex flex-col items-center gap-1 text-[10px] font-medium"
+              title="Subir de galería"
             >
               <ImageIcon className="w-6 h-6" />
+              <span>Galería</span>
             </button>
           </div>
         </div>
