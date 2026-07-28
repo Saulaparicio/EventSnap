@@ -21,10 +21,18 @@ import {
   BarChart2,
   Printer,
   Clock,
-  Layers
+  Layers,
+  Settings,
+  Shield,
+  Info,
+  Palette,
+  Upload,
+  Calendar,
+  Lock,
+  Eye,
+  AlertTriangle
 } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
-import EditEventDialog from '@/components/admin/EditEventDialog'
 
 interface Photo {
   id: string
@@ -52,9 +60,10 @@ interface Props {
   initialPhotos: Photo[]
 }
 
-type MainTab = 'moderation' | 'analytics' | 'print'
+type MainTab = 'moderation' | 'analytics' | 'print' | 'settings'
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 type PrintTemplate = 'table-tent' | 'flyer' | 'business-card'
+type SettingsTab = 'general' | 'branding' | 'privacy' | 'integrations' | 'billing'
 
 export default function EventGalleryManager({ event, initialPhotos }: Props) {
   const router = useRouter()
@@ -63,7 +72,144 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [currentMainTab, setCurrentMainTab] = useState<MainTab>('moderation')
   const [activePrintTemplate, setActivePrintTemplate] = useState<PrintTemplate>('table-tent')
+  const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('general')
   const [isPending, startTransition] = useTransition()
+
+  // Event settings states
+  const wConfig = event.watermarkConfig as any
+  const sConfig = event.slideshowConfig as any
+
+  const [eventName, setEventName] = useState(event.name)
+  const [eventSlug, setEventSlug] = useState(event.slug)
+  const [eventDate, setEventDate] = useState(() => {
+    try {
+      return new Date(event.date).toISOString().split('T')[0]
+    } catch {
+      return new Date().toISOString().split('T')[0]
+    }
+  })
+  const [eventStatus, setEventStatus] = useState<any>(event.status)
+
+  // Branding states
+  const [logoUrl, setLogoUrl] = useState<string | null>(wConfig?.logo_url || null)
+  const [logoPosition, setLogoPosition] = useState<string>(wConfig?.logo_position || 'bottom-right')
+  const [logoSize, setLogoSize] = useState<number>(wConfig?.logo_size || 15)
+  const [showWatermarkText, setShowWatermarkText] = useState<boolean>(wConfig?.text !== undefined ? Boolean(wConfig?.text) : true)
+  const [watermarkText, setWatermarkText] = useState(wConfig?.text || event.name)
+  const [textPosition, setTextPosition] = useState<string>(wConfig?.text_position || 'bottom-center')
+  const [brandColor, setBrandColor] = useState<string>(wConfig?.brand_color || '#0F172A')
+  const [customWatermark, setCustomWatermark] = useState<boolean>(wConfig?.enabled !== false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+
+  // Privacy & Restrictions states
+  const [autoApprove, setAutoApprove] = useState<boolean>(sConfig?.auto_approve === true)
+  const [galleryAccess, setGalleryAccess] = useState<string>(sConfig?.gallery_access || 'public')
+  const [guestUploadLimit, setGuestUploadLimit] = useState<number>(sConfig?.upload_limit || 50)
+  const [maxFileSize, setMaxFileSize] = useState<number>(sConfig?.max_file_size || 15)
+  const [allowedTypes, setAllowedTypes] = useState<string[]>(sConfig?.allowed_types || ['JPG', 'PNG', 'HEIC'])
+
+  const [savingSettings, setSavingSettings] = useState(false)
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingLogo(true)
+    const fd = new FormData()
+    fd.append('file', file)
+
+    try {
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: fd,
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Error al subir el logo')
+      } else {
+        setLogoUrl(data.url)
+        toast.success('Logo subido con éxito')
+      }
+    } catch {
+      toast.error('Error de red al subir el logo')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  async function handleSaveSettings() {
+    setSavingSettings(true)
+    try {
+      const res = await fetch(`/api/admin/events/${event.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: eventName,
+          date: eventDate,
+          status: eventStatus,
+          watermarkConfig: {
+            ...wConfig,
+            logo_url: logoUrl || undefined,
+            logo_position: logoPosition,
+            logo_size: Number(logoSize),
+            text: showWatermarkText ? (watermarkText || eventName) : undefined,
+            text_position: textPosition,
+            brand_color: brandColor,
+            enabled: customWatermark,
+          },
+          slideshowConfig: {
+            ...sConfig,
+            auto_approve: autoApprove,
+            gallery_access: galleryAccess,
+            upload_limit: Number(guestUploadLimit),
+            max_file_size: Number(maxFileSize),
+            allowed_types: allowedTypes,
+          },
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Error al guardar los cambios')
+      } else {
+        toast.success('Configuración guardada')
+        startTransition(() => {
+          router.refresh()
+        })
+      }
+    } catch {
+      toast.error('Error al guardar los cambios')
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  function handleDiscardSettings() {
+    setEventName(event.name)
+    setEventSlug(event.slug)
+    setEventDate(() => {
+      try {
+        return new Date(event.date).toISOString().split('T')[0]
+      } catch {
+        return new Date().toISOString().split('T')[0]
+      }
+    })
+    setEventStatus(event.status)
+    setLogoUrl(wConfig?.logo_url || null)
+    setLogoPosition(wConfig?.logo_position || 'bottom-right')
+    setLogoSize(wConfig?.logo_size || 15)
+    setShowWatermarkText(wConfig?.text !== undefined ? Boolean(wConfig?.text) : true)
+    setWatermarkText(wConfig?.text || event.name)
+    setTextPosition(wConfig?.text_position || 'bottom-center')
+    setBrandColor(wConfig?.brand_color || '#0F172A')
+    setCustomWatermark(wConfig?.enabled !== false)
+    setAutoApprove(sConfig?.auto_approve === true)
+    setGalleryAccess(sConfig?.gallery_access || 'public')
+    setGuestUploadLimit(sConfig?.upload_limit || 50)
+    setMaxFileSize(sConfig?.max_file_size || 15)
+    setAllowedTypes(sConfig?.allowed_types || ['JPG', 'PNG', 'HEIC'])
+    toast.info('Cambios descartados')
+  }
 
   // Calculate dynamic stats
   const totalCount = photos.length
@@ -330,7 +476,17 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
           </div>
           
           <div className="flex gap-2 flex-wrap items-center">
-            <EditEventDialog event={event} />
+            <button
+              onClick={() => setCurrentMainTab('settings')}
+              className={cn(
+                buttonVariants({ variant: currentMainTab === 'settings' ? 'default' : 'outline' }),
+                "rounded-xl text-xs border-[#e5e3dc] hover:bg-[#f6f3f5] text-[#0f172a] shadow-none gap-1.5 h-10 px-4 font-semibold cursor-pointer",
+                currentMainTab === 'settings' && "bg-black text-white hover:bg-slate-800"
+              )}
+            >
+              <Settings className="w-3.5 h-3.5" />
+              Configurar
+            </button>
             <Link
               href={`/live/${event.slug}`}
               target="_blank"
@@ -380,14 +536,14 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
             )}
           </div>
         </div>
-
-        {/* Mobile Navigation Tabs */}
-        <div className="flex border-b border-[#e5e3dc] lg:hidden gap-4 pt-1">
+ 
+        {/* Navigation Tabs (Desktop & Mobile) */}
+        <div className="flex border-b border-[#e5e3dc] gap-6 pt-1">
           <button
             onClick={() => setCurrentMainTab('moderation')}
             className={cn(
               "pb-3 text-xs tracking-wider uppercase font-semibold relative transition-colors cursor-pointer",
-              currentMainTab === 'moderation' ? "text-black border-b-2 border-black font-bold" : "text-[#76777d]"
+              currentMainTab === 'moderation' ? "text-black border-b-2 border-black font-bold" : "text-[#76777d] hover:text-black"
             )}
           >
             Moderar
@@ -396,7 +552,7 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
             onClick={() => setCurrentMainTab('analytics')}
             className={cn(
               "pb-3 text-xs tracking-wider uppercase font-semibold relative transition-colors cursor-pointer",
-              currentMainTab === 'analytics' ? "text-black border-b-2 border-black font-bold" : "text-[#76777d]"
+              currentMainTab === 'analytics' ? "text-black border-b-2 border-black font-bold" : "text-[#76777d] hover:text-black"
             )}
           >
             Analíticas
@@ -405,10 +561,19 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
             onClick={() => setCurrentMainTab('print')}
             className={cn(
               "pb-3 text-xs tracking-wider uppercase font-semibold relative transition-colors cursor-pointer",
-              currentMainTab === 'print' ? "text-black border-b-2 border-black font-bold" : "text-[#76777d]"
+              currentMainTab === 'print' ? "text-black border-b-2 border-black font-bold" : "text-[#76777d] hover:text-black"
             )}
           >
             Imprimir QR
+          </button>
+          <button
+            onClick={() => setCurrentMainTab('settings')}
+            className={cn(
+              "pb-3 text-xs tracking-wider uppercase font-semibold relative transition-colors cursor-pointer",
+              currentMainTab === 'settings' ? "text-black border-b-2 border-black font-bold" : "text-[#76777d] hover:text-black"
+            )}
+          >
+            Ajustes
           </button>
         </div>
 
@@ -1097,6 +1262,461 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
 
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* MAIN TAB 4: SETTINGS (Google Stitch style) */}
+        {currentMainTab === 'settings' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-black">Ajustes del Evento</h2>
+              <p className="text-xs text-[#76777d]">Configura la información general, marca e identidad visual, y reglas de privacidad de tu galería.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+              {/* Left Column: Sub-navigation sidebar */}
+              <div className="md:col-span-3">
+                <nav className="flex flex-col gap-1 sticky top-20">
+                  <button
+                    onClick={() => setActiveSettingsTab('general')}
+                    className={cn(
+                      "flex items-center justify-between p-3 px-4 rounded-xl text-xs font-semibold transition-all w-full text-left cursor-pointer",
+                      activeSettingsTab === 'general'
+                        ? "bg-black text-white"
+                        : "bg-white border border-[#e5e3dc] text-slate-700 hover:bg-[#f6f3f5]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Info className="w-4 h-4" />
+                      <span>General</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSettingsTab('branding')}
+                    className={cn(
+                      "flex items-center justify-between p-3 px-4 rounded-xl text-xs font-semibold transition-all w-full text-left cursor-pointer",
+                      activeSettingsTab === 'branding'
+                        ? "bg-black text-white"
+                        : "bg-white border border-[#e5e3dc] text-slate-700 hover:bg-[#f6f3f5]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Palette className="w-4 h-4" />
+                      <span>Branding</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSettingsTab('privacy')}
+                    className={cn(
+                      "flex items-center justify-between p-3 px-4 rounded-xl text-xs font-semibold transition-all w-full text-left cursor-pointer",
+                      activeSettingsTab === 'privacy'
+                        ? "bg-black text-white"
+                        : "bg-white border border-[#e5e3dc] text-slate-700 hover:bg-[#f6f3f5]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4" />
+                      <span>Privacidad y Límites</span>
+                    </div>
+                  </button>
+                </nav>
+              </div>
+
+              {/* Right Column: Bento panels */}
+              <div className="md:col-span-9 space-y-6">
+                
+                {/* SUBTAB: GENERAL */}
+                {activeSettingsTab === 'general' && (
+                  <section className="bg-white border border-[#e5e3dc] p-6 rounded-2xl space-y-6 shadow-sm">
+                    <div className="flex items-center gap-2 border-b border-[#e5e3dc] pb-3">
+                      <Info className="w-5 h-5 text-[#006a61]" />
+                      <h3 className="text-sm font-bold text-black">Ajustes Generales</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Nombre del Evento</label>
+                        <input
+                          type="text"
+                          value={eventName}
+                          onChange={(e) => setEventName(e.target.value)}
+                          className="w-full bg-white border border-[#e5e3dc] rounded-xl p-3 text-xs focus:border-[#0d9488] focus:ring-0"
+                          placeholder="Nombre del evento"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">URL Slug</label>
+                        <div className="flex">
+                          <span className="bg-[#f0edef] border border-r-0 border-[#e5e3dc] px-3 py-3 rounded-l-xl text-xs text-slate-500 font-semibold select-none">
+                            eventsnap.com/e/
+                          </span>
+                          <input
+                            type="text"
+                            value={eventSlug}
+                            disabled
+                            className="flex-grow bg-[#fcf8fa] border border-[#e5e3dc] rounded-r-xl p-3 text-xs cursor-not-allowed opacity-70"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Fecha del Evento</label>
+                        <input
+                          type="date"
+                          value={eventDate}
+                          onChange={(e) => setEventDate(e.target.value)}
+                          className="w-full bg-white border border-[#e5e3dc] rounded-xl p-3 text-xs focus:border-[#0d9488] focus:ring-0"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Estado del Evento</label>
+                        <select
+                          value={eventStatus}
+                          onChange={(e) => setEventStatus(e.target.value as any)}
+                          className="w-full bg-white border border-[#e5e3dc] rounded-xl p-3 text-xs focus:border-[#0d9488] focus:ring-0"
+                        >
+                          <option value="active">Activo (Live)</option>
+                          <option value="closed">Cerrado (Closed)</option>
+                          <option value="archived">Archivado (Archived)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+                {/* SUBTAB: BRANDING */}
+                {activeSettingsTab === 'branding' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <section className="bg-white border border-[#e5e3dc] p-6 rounded-2xl space-y-6 shadow-sm lg:col-span-2">
+                      <div className="flex items-center gap-2 border-b border-[#e5e3dc] pb-3">
+                        <Palette className="w-5 h-5 text-[#006a61]" />
+                        <h3 className="text-sm font-bold text-black">Branding e Identidad</h3>
+                      </div>
+
+                      {/* Event Logo Upload */}
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Logo del Evento (PNG transparente)</label>
+                        <div className="border-2 border-dashed border-[#e5e3dc] rounded-2xl p-6 flex flex-col items-center justify-center bg-[#fcf8fa] hover:bg-neutral-50 transition-colors cursor-pointer relative group">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            disabled={uploadingLogo}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <Upload className="w-8 h-8 text-[#76777d] group-hover:scale-110 transition-transform mb-2" />
+                          <p className="text-xs text-slate-500 text-center font-medium">
+                            {uploadingLogo ? 'Subiendo logo...' : 'Suelta tu logo aquí o haz clic para explorar'}
+                          </p>
+                        </div>
+
+                        {logoUrl && (
+                          <div className="mt-3 relative w-36 h-20 border border-[#e5e3dc] rounded-xl bg-[#fcf8fa] flex items-center justify-center overflow-hidden p-2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                            <button
+                              type="button"
+                              onClick={() => setLogoUrl(null)}
+                              className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center transition-colors font-bold"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Brand Color */}
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Color de Marca Principal</label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="color"
+                            value={brandColor}
+                            onChange={(e) => setBrandColor(e.target.value)}
+                            className="w-12 h-12 rounded-xl cursor-pointer border border-[#e5e3dc] p-0"
+                          />
+                          <input
+                            type="text"
+                            value={brandColor}
+                            onChange={(e) => setBrandColor(e.target.value)}
+                            className="flex-grow bg-white border border-[#e5e3dc] rounded-xl p-3 text-xs uppercase focus:border-[#0d9488]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Watermark toggle */}
+                      <div className="flex items-center justify-between p-4 bg-[#fcf8fa] border border-[#e5e3dc] rounded-xl">
+                        <div>
+                          <p className="text-xs font-bold text-black">Marca de Agua Personalizada</p>
+                          <p className="text-[10px] text-slate-500">Aplica logo y nombre del evento en las fotos de los invitados</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={customWatermark}
+                          onChange={(e) => setCustomWatermark(e.target.checked)}
+                          className="rounded border-[#e5e3dc] text-black focus:ring-0 w-5 h-5 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Watermark configuration parameters (logo position, text) */}
+                      {customWatermark && (
+                        <div className="space-y-4 pt-2 border-t border-[#e5e3dc]">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-black">Texto de Marca de Agua</label>
+                            <label className="flex items-center gap-1.5 text-xs text-slate-500 font-medium cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={showWatermarkText}
+                                onChange={(e) => setShowWatermarkText(e.target.checked)}
+                                className="rounded border-[#e5e3dc] text-black focus:ring-0 w-4 h-4 cursor-pointer"
+                              />
+                              Mostrar texto
+                            </label>
+                          </div>
+                          
+                          {showWatermarkText && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-slate-500 font-bold uppercase">Texto del Estampado</label>
+                                <input
+                                  type="text"
+                                  value={watermarkText}
+                                  onChange={(e) => setWatermarkText(e.target.value)}
+                                  className="w-full bg-white border border-[#e5e3dc] rounded-xl p-2.5 text-xs focus:border-[#0d9488]"
+                                  placeholder={eventName}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-slate-500 font-bold uppercase">Posición del Texto</label>
+                                <select
+                                  value={textPosition}
+                                  onChange={(e) => setTextPosition(e.target.value)}
+                                  className="w-full bg-white border border-[#e5e3dc] rounded-xl p-2.5 text-xs focus:border-[#0d9488]"
+                                >
+                                  <option value="bottom-center">Abajo - Centro</option>
+                                  <option value="top-center">Arriba - Centro</option>
+                                  <option value="bottom-left">Abajo - Izquierda</option>
+                                  <option value="bottom-right">Abajo - Derecha</option>
+                                </select>
+                              </div>
+                            </div>
+                          )}
+
+                          {logoUrl && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-slate-500 font-bold uppercase">Posición del Logo</label>
+                                <select
+                                  value={logoPosition}
+                                  onChange={(e) => setLogoPosition(e.target.value)}
+                                  className="w-full bg-white border border-[#e5e3dc] rounded-xl p-2.5 text-xs focus:border-[#0d9488]"
+                                >
+                                  <option value="bottom-right">Abajo - Derecha</option>
+                                  <option value="bottom-left">Abajo - Izquierda</option>
+                                  <option value="top-right">Arriba - Derecha</option>
+                                  <option value="top-left">Arriba - Izquierda</option>
+                                  <option value="center">Centro</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-slate-500 font-bold uppercase">Tamaño del Logo</label>
+                                <select
+                                  value={logoSize}
+                                  onChange={(e) => setLogoSize(Number(e.target.value))}
+                                  className="w-full bg-white border border-[#e5e3dc] rounded-xl p-2.5 text-xs focus:border-[#0d9488]"
+                                >
+                                  <option value="10">Pequeño (10%)</option>
+                                  <option value="15">Mediano (15%)</option>
+                                  <option value="20">Grande (20%)</option>
+                                  <option value="25">Extra Grande (25%)</option>
+                                </select>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </section>
+
+                    {/* Branding Live Preview Sidecard */}
+                    <section className="bg-[#f0edef] border border-[#e5e3dc] p-5 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden h-fit">
+                      <p className="absolute top-4 left-4 text-[9px] font-bold text-slate-500 uppercase tracking-widest">Vista Previa En Vivo</p>
+                      
+                      <div className="w-full max-w-[220px] bg-white rounded-2xl shadow-md overflow-hidden border border-[#e5e3dc] my-6">
+                        <div className="aspect-[4/3] relative bg-zinc-950 flex items-center justify-center p-1">
+                          <span className="text-zinc-600 text-2xs select-none">Foto de invitado</span>
+                          
+                          {/* Live simulated watermark overlay */}
+                          {customWatermark && (
+                            <div className="absolute inset-0 p-2 flex flex-col justify-between pointer-events-none">
+                              {/* Top row */}
+                              <div className="flex justify-between items-start w-full">
+                                {logoUrl && logoPosition === 'top-left' && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={logoUrl} alt="logo" className="object-contain" style={{ width: `${logoSize * 1.5}px` }} />
+                                )}
+                                {showWatermarkText && textPosition === 'top-center' && (
+                                  <span className="text-[7px] text-white/95 font-bold tracking-tight bg-black/45 px-1.5 py-0.5 rounded mx-auto">{watermarkText || eventName}</span>
+                                )}
+                                {logoUrl && logoPosition === 'top-right' && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={logoUrl} alt="logo" className="object-contain ml-auto" style={{ width: `${logoSize * 1.5}px` }} />
+                                )}
+                              </div>
+                              
+                              {/* Center row */}
+                              <div className="flex-1 flex items-center justify-center w-full">
+                                {logoUrl && logoPosition === 'center' && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={logoUrl} alt="logo" className="object-contain opacity-55" style={{ width: `${logoSize * 2.5}px` }} />
+                                )}
+                              </div>
+
+                              {/* Bottom row */}
+                              <div className="flex justify-between items-end w-full">
+                                {logoUrl && logoPosition === 'bottom-left' && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={logoUrl} alt="logo" className="object-contain" style={{ width: `${logoSize * 1.5}px` }} />
+                                )}
+                                {showWatermarkText && textPosition === 'bottom-center' && (
+                                  <span className="text-[7px] text-white/95 font-bold tracking-tight bg-black/45 px-1.5 py-0.5 rounded mx-auto">{watermarkText || eventName}</span>
+                                )}
+                                {showWatermarkText && textPosition === 'bottom-left' && (
+                                  <span className="text-[7px] text-white/95 font-bold tracking-tight bg-black/45 px-1.5 py-0.5 rounded">{watermarkText || eventName}</span>
+                                )}
+                                {showWatermarkText && textPosition === 'bottom-right' && (
+                                  <span className="text-[7px] text-white/95 font-bold tracking-tight bg-black/45 px-1.5 py-0.5 rounded ml-auto">{watermarkText || eventName}</span>
+                                )}
+                                {logoUrl && logoPosition === 'bottom-right' && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={logoUrl} alt="logo" className="object-contain ml-auto" style={{ width: `${logoSize * 1.5}px` }} />
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3 space-y-1.5">
+                          <div className="h-2.5 w-3/4 bg-[#f0edef] rounded"></div>
+                          <div className="h-1.5 w-full bg-[#f0edef] rounded"></div>
+                          <div className="h-5 w-full rounded mt-2" style={{ backgroundColor: brandColor }}></div>
+                        </div>
+                      </div>
+                      
+                      <p className="text-[10px] text-slate-500 font-bold text-center">Simulador de Estampado Móvil</p>
+                    </section>
+                  </div>
+                )}
+
+                {/* SUBTAB: PRIVACY */}
+                {activeSettingsTab === 'privacy' && (
+                  <section className="bg-white border border-[#e5e3dc] p-6 rounded-2xl space-y-6 shadow-sm">
+                    <div className="flex items-center gap-2 border-b border-[#e5e3dc] pb-3">
+                      <Shield className="w-5 h-5 text-[#006a61]" />
+                      <h3 className="text-sm font-bold text-black">Seguridad, Privacidad y Restricciones</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Moderation style */}
+                      <div className="space-y-4">
+                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Flujo de Moderación de Fotos</label>
+                        <div className="flex flex-col gap-2">
+                          <label className={cn(
+                            "flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-neutral-50 transition-colors",
+                            autoApprove ? "border-[#0d9488] bg-teal-50/10" : "border-[#e5e3dc]"
+                          )}>
+                            <input
+                              type="radio"
+                              name="autoApprove"
+                              checked={autoApprove}
+                              onChange={() => setAutoApprove(true)}
+                              className="text-black focus:ring-0 w-4 h-4 cursor-pointer"
+                            />
+                            <div>
+                              <p className="text-xs font-bold text-black">Aprobación Automática (Auto-approve)</p>
+                              <p className="text-[10px] text-slate-500">Las fotos subidas aparecen al instante en la galería</p>
+                            </div>
+                          </label>
+
+                          <label className={cn(
+                            "flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-neutral-50 transition-colors",
+                            !autoApprove ? "border-[#0d9488] bg-teal-50/10" : "border-[#e5e3dc]"
+                          )}>
+                            <input
+                              type="radio"
+                              name="autoApprove"
+                              checked={!autoApprove}
+                              onChange={() => setAutoApprove(false)}
+                              className="text-black focus:ring-0 w-4 h-4 cursor-pointer"
+                            />
+                            <div>
+                              <p className="text-xs font-bold text-black">Moderación Manual (Manual Moderation)</p>
+                              <p className="text-[10px] text-slate-500">Los administradores deben aprobar cada foto antes de mostrarla</p>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Gallery Access */}
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Acceso a la Galería</label>
+                          <select
+                            value={galleryAccess}
+                            onChange={(e) => setGalleryAccess(e.target.value)}
+                            className="w-full bg-white border border-[#e5e3dc] rounded-xl p-3 text-xs focus:border-[#0d9488]"
+                          >
+                            <option value="public">Público (Cualquiera con el enlace)</option>
+                            <option value="password">Protegido por contraseña</option>
+                            <option value="invite">Solo con Invitación directa</option>
+                          </select>
+                        </div>
+
+                        {/* Upload limits info */}
+                        <div className="space-y-2 border-t border-[#e5e3dc] pt-3">
+                          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Límites de Subida de Invitado</label>
+                          <div className="flex items-center justify-between text-xs py-1 border-b border-[#e5e3dc]/50">
+                            <span className="text-slate-600 font-medium">Límite por Invitado</span>
+                            <span className="text-black font-extrabold">{guestUploadLimit} fotos</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs py-1 border-b border-[#e5e3dc]/50">
+                            <span className="text-slate-600 font-medium">Tamaño máximo de archivo</span>
+                            <span className="text-black font-extrabold">{maxFileSize} MB</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs py-1">
+                            <span className="text-slate-600 font-medium">Extensiones permitidas</span>
+                            <span className="text-2xs bg-[#f0edef] text-slate-700 px-2 py-0.5 rounded-lg font-bold">JPG, PNG, HEIC</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+              </div>
+            </div>
+
+            {/* Bottom Sticky Action Bar */}
+            <div className="flex items-center justify-end gap-3 pt-6 border-t border-[#e5e3dc] mt-6">
+              <button
+                type="button"
+                onClick={handleDiscardSettings}
+                className="px-5 py-2.5 border border-[#e5e3dc] hover:bg-[#f6f3f5] text-[#0f172a] font-bold text-xs rounded-xl transition-all cursor-pointer bg-white"
+              >
+                Descartar Cambios
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveSettings}
+                disabled={savingSettings || uploadingLogo}
+                className="px-6 py-2.5 bg-black text-white hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed font-bold text-xs rounded-xl shadow-none active:scale-95 transition-all cursor-pointer"
+              >
+                {savingSettings ? 'Guardando Ajustes...' : 'Guardar Ajustes'}
+              </button>
             </div>
           </div>
         )}
