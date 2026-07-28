@@ -185,7 +185,7 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
         <div className="mt-6 border border-slate-800 rounded-2xl p-5 bg-slate-900/40 backdrop-blur max-w-xs flex flex-col items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`/api/admin/events/${eventId}/qr/qr-${slug}.png`}
+            src={`/api/events/${slug}/qr`}
             alt="QR del evento"
             className="w-28 h-28 rounded-lg object-contain bg-white p-1"
           />
@@ -323,7 +323,7 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
             <div className="relative w-24 h-24 md:w-28 md:h-28 bg-white flex items-center justify-center rounded-lg overflow-hidden border border-[#e5e3dc]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`/api/admin/events/${eventId}/qr/qr-${slug}.png`}
+                src={`/api/events/${slug}/qr`}
                 alt="QR del evento"
                 className="w-full h-full p-1 object-contain"
               />
