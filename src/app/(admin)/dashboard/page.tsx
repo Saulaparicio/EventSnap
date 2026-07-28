@@ -200,14 +200,15 @@ export default async function DashboardPage() {
                         <span className="material-symbols-outlined text-md text-black">photo_library</span>
                         <span className="text-[9px] font-bold text-[#45464d]">Moderar</span>
                       </Link>
-                      <Link
+                      <a
                         href={`/live/${event.slug}`}
                         target="_blank"
+                        rel="noopener noreferrer"
                         className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-[#f6f3f5] transition-colors border border-[#e5e3dc] text-center"
                       >
                         <span className="material-symbols-outlined text-md text-black">slideshow</span>
                         <span className="text-[9px] font-bold text-[#45464d]">Slideshow</span>
-                      </Link>
+                      </a>
                       <QRDownloadButton eventId={event.id} slug={event.slug} />
                     </div>
                   </div>

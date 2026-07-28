@@ -487,9 +487,10 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
               <Settings className="w-3.5 h-3.5" />
               Configurar
             </button>
-            <Link
+            <a
               href={`/live/${event.slug}`}
               target="_blank"
+              rel="noopener noreferrer"
               className={cn(
                 buttonVariants({ variant: 'outline' }),
                 "rounded-xl text-xs border-[#e5e3dc] hover:bg-[#f6f3f5] text-[#0f172a] shadow-none gap-1.5 h-10 px-4 font-semibold cursor-pointer"
@@ -497,7 +498,7 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
             >
               <ExternalLink className="w-3.5 h-3.5" />
               Slideshow
-            </Link>
+            </a>
             {event.qrCodeUrl && (
               <a
                 href={`/api/admin/events/${event.id}/qr/qr-${event.slug}.png`}
