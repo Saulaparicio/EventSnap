@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getAppUrl } from '@/lib/utils'
+import { generateQRDataUrl } from '@/lib/qr'
 
 export async function GET(
   _req: NextRequest,
@@ -32,6 +34,10 @@ export async function PUT(
   const event = await prisma.event.findFirst({ where: { id, orgId: session.user.id } })
   if (!event) return Response.json({ error: 'Evento no encontrado' }, { status: 404 })
 
+  const baseUrl = getAppUrl(request)
+  const eventUrl = `${baseUrl}/e/${event.slug}`
+  const freshQrCodeUrl = await generateQRDataUrl(eventUrl)
+
   const updated = await prisma.event.update({
     where: { id },
     data: {
@@ -40,6 +46,7 @@ export async function PUT(
       status: body.status,
       watermarkConfig: body.watermarkConfig,
       slideshowConfig: body.slideshowConfig,
+      qrCodeUrl: freshQrCodeUrl,
     },
   })
 

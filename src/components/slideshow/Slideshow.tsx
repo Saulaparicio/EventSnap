@@ -182,16 +182,18 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
           Iniciar pantalla completa
         </button>
 
-        {qrCodeUrl && (
-          <div className="mt-6 border border-slate-800 rounded-2xl p-5 bg-slate-900/40 backdrop-blur max-w-xs flex flex-col items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrCodeUrl} alt="QR del evento" className="w-28 h-28 rounded-lg" />
-            <div className="text-center">
-              <p className="text-xs text-slate-300 font-semibold">Escanear código QR</p>
-              <p className="text-[10px] text-slate-500 mt-1">Los invitados escanean para subir fotos desde el celular</p>
-            </div>
+        <div className="mt-6 border border-slate-800 rounded-2xl p-5 bg-slate-900/40 backdrop-blur max-w-xs flex flex-col items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/admin/events/${eventId}/qr/qr-${slug}.png`}
+            alt="QR del evento"
+            className="w-28 h-28 rounded-lg object-contain bg-white p-1"
+          />
+          <div className="text-center">
+            <p className="text-xs text-slate-300 font-semibold">Escanear código QR</p>
+            <p className="text-[10px] text-slate-500 mt-1">Los invitados escanean para subir fotos desde el celular</p>
           </div>
-        )}
+        </div>
       </div>
     )
   }
@@ -321,7 +323,7 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
             <div className="relative w-24 h-24 md:w-28 md:h-28 bg-white flex items-center justify-center rounded-lg overflow-hidden border border-[#e5e3dc]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={qrCodeUrl ?? `/api/admin/events/${eventId}/qr/qr-${slug}.png`}
+                src={`/api/admin/events/${eventId}/qr/qr-${slug}.png`}
                 alt="QR del evento"
                 className="w-full h-full p-1 object-contain"
               />
