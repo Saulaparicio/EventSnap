@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -30,7 +30,8 @@ import {
   Calendar,
   Lock,
   Eye,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 
@@ -109,6 +110,40 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
   const [allowedTypes, setAllowedTypes] = useState<string[]>(sConfig?.allowed_types || ['JPG', 'PNG', 'HEIC'])
 
   const [savingSettings, setSavingSettings] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const fetchLatestPhotos = async (silent = false) => {
+    if (!silent) setIsRefreshing(true)
+    try {
+      const res = await fetch(`/api/admin/events/${event.id}/photos`)
+      if (res.ok) {
+        const data = await res.json()
+        const formatted = data.map((p: any) => ({
+          id: p.id,
+          originalUrl: p.originalUrl,
+          watermarkedUrl: p.watermarkedUrl,
+          thumbnailUrl: p.thumbnailUrl,
+          status: p.status,
+          uploadedAt: new Date(p.uploadedAt).toISOString(),
+          fileSize: p.fileSize,
+        }))
+        // Only update if count has changed or statuses changed
+        setPhotos(formatted)
+      }
+    } catch (error) {
+      console.error('Error fetching photos:', error)
+    } finally {
+      if (!silent) setIsRefreshing(false)
+    }
+  }
+
+  // Auto-poll for new photos every 7 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchLatestPhotos(true)
+    }, 7000)
+    return () => clearInterval(interval)
+  }, [event.id])
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -476,6 +511,17 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
           </div>
           
           <div className="flex gap-2 flex-wrap items-center">
+            <button
+              onClick={() => fetchLatestPhotos(false)}
+              disabled={isRefreshing}
+              className={cn(
+                buttonVariants({ variant: 'outline' }),
+                "rounded-xl text-xs border-[#e5e3dc] hover:bg-[#f6f3f5] text-[#0f172a] shadow-none gap-1.5 h-10 px-4 font-semibold cursor-pointer"
+              )}
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")} />
+              Recargar
+            </button>
             <button
               onClick={() => setCurrentMainTab('settings')}
               className={cn(
