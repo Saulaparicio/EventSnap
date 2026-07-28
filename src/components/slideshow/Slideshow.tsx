@@ -107,12 +107,16 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
           uploadedAt: p.uploadedAt,
         }))
         setPhotos((prev) => {
-          const existingIds = new Set(prev.map((p) => p.id))
+          const apiIds = new Set(newPhotos.map((p) => p.id))
+          const filtered = prev.filter((p) => apiIds.has(p.id))
+          const existingIds = new Set(filtered.map((p) => p.id))
           const added = newPhotos.filter((p) => !existingIds.has(p.id))
-          if (added.length === 0) return prev
+          
+          if (added.length === 0 && filtered.length === prev.length) return prev
+          
           const all = config.order === 'random'
-            ? [...prev, ...added].sort(() => Math.random() - 0.5)
-            : [...prev, ...added]
+            ? [...filtered, ...added].sort(() => Math.random() - 0.5)
+            : [...filtered, ...added]
           return all
         })
       } catch { /* silent */ }
@@ -122,10 +126,26 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
 
   // Sync state if photos list is updated from polling
   useEffect(() => {
+    if (photos.length === 0) {
+      setLayer1Photo(null)
+      setLayer2Photo(null)
+      setCurrentIndex(0)
+      return
+    }
+
+    // If the active photo was deleted, reset to the first available photo
+    if (activeLayer === 1 && layer1Photo && !photos.some(p => p.id === layer1Photo.id)) {
+      setLayer1Photo(photos[0] ?? null)
+      setCurrentIndex(0)
+    } else if (activeLayer === 2 && layer2Photo && !photos.some(p => p.id === layer2Photo.id)) {
+      setLayer2Photo(photos[0] ?? null)
+      setCurrentIndex(0)
+    }
+
     if (photos.length > 0 && !layer1Photo && !layer2Photo) {
       setLayer1Photo(photos[0])
     }
-  }, [photos, layer1Photo, layer2Photo])
+  }, [photos, layer1Photo, layer2Photo, activeLayer])
 
   // Slide transition logic (Cross-fade layers)
   const advance = useCallback(() => {

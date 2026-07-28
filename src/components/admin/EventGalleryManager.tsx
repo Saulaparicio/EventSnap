@@ -119,6 +119,28 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
 
   const [savingSettings, setSavingSettings] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [deletingEvent, setDeletingEvent] = useState(false)
+
+  async function handleDeleteEvent() {
+    if (!confirm('¿Estás absolutamente seguro de que deseas eliminar este evento? Esta acción borrará de forma permanente todas las fotos asociadas y es irreversible.')) return
+    setDeletingEvent(true)
+    try {
+      const res = await fetch(`/api/admin/events/${event.id}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        toast.success('Evento eliminado permanentemente')
+        router.push('/dashboard')
+      } else {
+        const data = await res.json()
+        toast.error(data.error ?? 'Error al eliminar el evento')
+      }
+    } catch {
+      toast.error('Error de red al intentar eliminar el evento')
+    } finally {
+      setDeletingEvent(false)
+    }
+  }
 
   const fetchLatestPhotos = async (silent = false) => {
     if (!silent) setIsRefreshing(true)
@@ -1466,6 +1488,25 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                           <option value="archived">Archivado (Archived)</option>
                         </select>
                       </div>
+                    </div>
+
+                    {/* Danger Zone */}
+                    <div className="border border-red-200 bg-red-50/10 p-5 rounded-2xl space-y-3 mt-6">
+                      <div className="flex items-center gap-2 text-red-600">
+                        <AlertTriangle className="w-5 h-5" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider">Zona de Peligro</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-normal">
+                        Al eliminar este evento, se borrarán de forma permanente todas las fotos asociadas y la configuración de forma irreversible.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleDeleteEvent}
+                        disabled={deletingEvent}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                      >
+                        {deletingEvent ? 'Eliminando...' : 'Eliminar Evento Permanentemente'}
+                      </button>
                     </div>
                   </section>
                 )}
