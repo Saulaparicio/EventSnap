@@ -6,7 +6,7 @@ import { cn, formatDate } from '@/lib/utils'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Camera, Image as ImageIcon, RotateCw, X, Download, Share2, Link2, Users } from 'lucide-react'
+import { ArrowLeft, Camera, Image as ImageIcon, RotateCw, X, Download, Share2, Link2, Users, Calendar, ChevronRight } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
 type ScreenState = 'welcome' | 'camera' | 'preview' | 'confirmation'

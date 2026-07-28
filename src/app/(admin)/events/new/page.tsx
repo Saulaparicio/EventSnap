@@ -444,7 +444,7 @@ export default function NewEventPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Moderation style */}
                 <div className="space-y-4">
-                  <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Flujo de Moderación de Fotos</label>
+                  <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Flujo de Moderación de Fotos</Label>
                   <div className="flex flex-col gap-2">
                     <label className={cn(
                       "flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-neutral-50 transition-colors",
