@@ -31,7 +31,8 @@ import {
   Lock,
   Eye,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Tv
 } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 
@@ -64,7 +65,7 @@ interface Props {
 type MainTab = 'moderation' | 'analytics' | 'print' | 'settings'
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected'
 type PrintTemplate = 'table-tent' | 'flyer' | 'business-card'
-type SettingsTab = 'general' | 'branding' | 'privacy' | 'integrations' | 'billing'
+type SettingsTab = 'general' | 'branding' | 'privacy' | 'slideshow' | 'integrations' | 'billing'
 
 export default function EventGalleryManager({ event, initialPhotos }: Props) {
   const router = useRouter()
@@ -108,6 +109,13 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
   const [guestUploadLimit, setGuestUploadLimit] = useState<number>(sConfig?.upload_limit || 50)
   const [maxFileSize, setMaxFileSize] = useState<number>(sConfig?.max_file_size || 15)
   const [allowedTypes, setAllowedTypes] = useState<string[]>(sConfig?.allowed_types || ['JPG', 'PNG', 'HEIC'])
+
+  // Slideshow config states
+  const [slideshowSpeed, setSlideshowSpeed] = useState<number>(sConfig?.speed || 5)
+  const [slideshowTransition, setSlideshowTransition] = useState<string>(sConfig?.transition || 'fade')
+  const [slideshowOrder, setSlideshowOrder] = useState<string>(sConfig?.order || 'newest_first')
+  const [showQrOverlay, setShowQrOverlay] = useState<boolean>(sConfig?.show_qr !== false)
+  const [showNameOverlay, setShowNameOverlay] = useState<boolean>(sConfig?.show_name !== false)
 
   const [savingSettings, setSavingSettings] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -199,6 +207,11 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
             upload_limit: Number(guestUploadLimit),
             max_file_size: Number(maxFileSize),
             allowed_types: allowedTypes,
+            speed: Number(slideshowSpeed),
+            transition: slideshowTransition,
+            order: slideshowOrder,
+            show_qr: showQrOverlay,
+            show_name: showNameOverlay,
           },
         }),
       })
@@ -243,6 +256,11 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
     setGuestUploadLimit(sConfig?.upload_limit || 50)
     setMaxFileSize(sConfig?.max_file_size || 15)
     setAllowedTypes(sConfig?.allowed_types || ['JPG', 'PNG', 'HEIC'])
+    setSlideshowSpeed(sConfig?.speed || 5)
+    setSlideshowTransition(sConfig?.transition || 'fade')
+    setSlideshowOrder(sConfig?.order || 'newest_first')
+    setShowQrOverlay(sConfig?.show_qr !== false)
+    setShowNameOverlay(sConfig?.show_name !== false)
     toast.info('Cambios descartados')
   }
 
@@ -1355,7 +1373,7 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                     </div>
                   </button>
 
-                  <button
+                   <button
                     onClick={() => setActiveSettingsTab('privacy')}
                     className={cn(
                       "flex items-center justify-between p-3 px-4 rounded-xl text-xs font-semibold transition-all w-full text-left cursor-pointer",
@@ -1367,6 +1385,21 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                     <div className="flex items-center gap-2">
                       <Shield className="w-4 h-4" />
                       <span>Privacidad y Límites</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveSettingsTab('slideshow')}
+                    className={cn(
+                      "flex items-center justify-between p-3 px-4 rounded-xl text-xs font-semibold transition-all w-full text-left cursor-pointer",
+                      activeSettingsTab === 'slideshow'
+                        ? "bg-black text-white"
+                        : "bg-white border border-[#e5e3dc] text-slate-700 hover:bg-[#f6f3f5]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Tv className="w-4 h-4" />
+                      <span>Slideshow</span>
                     </div>
                   </button>
                 </nav>
@@ -1742,6 +1775,193 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                       </div>
                     </div>
                   </section>
+                )}
+                 {/* SUBTAB: SLIDESHOW */}
+                {activeSettingsTab === 'slideshow' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Left Column: Form Settings */}
+                    <div className="lg:col-span-7 space-y-6">
+                      <section className="bg-white border border-[#e5e3dc] p-6 rounded-2xl space-y-6 shadow-sm">
+                        <div className="flex items-center gap-2 border-b border-[#e5e3dc] pb-3">
+                          <Tv className="w-5 h-5 text-[#006a61]" />
+                          <h3 className="text-sm font-bold text-black">Ajustes del Slideshow</h3>
+                        </div>
+
+                        {/* Photo Duration */}
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Duración de la Foto</label>
+                          <div className="flex gap-2">
+                            {[
+                              { label: '3s', val: 3 },
+                              { label: '5s', val: 5 },
+                              { label: '10s', val: 10 }
+                            ].map((d) => (
+                              <button
+                                key={d.val}
+                                type="button"
+                                onClick={() => setSlideshowSpeed(d.val)}
+                                className={cn(
+                                  "px-5 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                                  slideshowSpeed === d.val
+                                    ? "bg-black text-white border-black"
+                                    : "bg-white border-[#e5e3dc] text-[#0f172a] hover:bg-[#f6f3f5]"
+                                )}
+                              >
+                                {d.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Transition Style */}
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Estilo de Transición</label>
+                          <div className="flex gap-2">
+                            {[
+                              { label: 'Fade', val: 'fade' },
+                              { label: 'Slide', val: 'slide' },
+                              { label: 'Zoom', val: 'zoom' }
+                            ].map((t) => (
+                              <button
+                                key={t.val}
+                                type="button"
+                                onClick={() => setSlideshowTransition(t.val)}
+                                className={cn(
+                                  "px-5 py-2.5 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+                                  slideshowTransition === t.val
+                                    ? "bg-black text-white border-black"
+                                    : "bg-white border-[#e5e3dc] text-[#0f172a] hover:bg-[#f6f3f5]"
+                                )}
+                              >
+                                {t.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Photo Order */}
+                        <div className="space-y-1.5">
+                          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Orden de Fotos</label>
+                          <select
+                            value={slideshowOrder}
+                            onChange={(e) => setSlideshowOrder(e.target.value)}
+                            className="w-full bg-white border border-[#e5e3dc] rounded-xl p-3 text-xs focus:border-[#0d9488]"
+                          >
+                            <option value="newest_first">Más reciente primero</option>
+                            <option value="chronological">Cronológico (Más antigua primero)</option>
+                            <option value="random">Aleatorio</option>
+                          </select>
+                        </div>
+
+                        <div className="border-t border-[#e5e3dc] pt-4 space-y-4">
+                          {/* Auto Approve Toggle */}
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-bold text-black">Aprobar Fotos Automáticamente</p>
+                              <p className="text-[10px] text-red-500 font-medium">⚠️ Las fotos se proyectarán en vivo sin revisión previa.</p>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={autoApprove}
+                              onChange={(e) => setAutoApprove(e.target.checked)}
+                              className="rounded border-[#e5e3dc] text-black focus:ring-0 w-5 h-5 cursor-pointer"
+                            />
+                          </div>
+
+                          {/* Show QR code overlay */}
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-bold text-black">Mostrar Código QR en Pantalla</p>
+                              <p className="text-[10px] text-slate-500">Ayuda a los invitados a unirse escaneando el código QR.</p>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={showQrOverlay}
+                              onChange={(e) => setShowQrOverlay(e.target.checked)}
+                              className="rounded border-[#e5e3dc] text-black focus:ring-0 w-5 h-5 cursor-pointer"
+                            />
+                          </div>
+
+                          {/* Show event name overlay */}
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <p className="text-xs font-bold text-black">Mostrar Nombre del Evento</p>
+                              <p className="text-[10px] text-slate-500">Muestra "{event.name}" en la parte inferior de la pantalla.</p>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={showNameOverlay}
+                              onChange={(e) => setShowNameOverlay(e.target.checked)}
+                              className="rounded border-[#e5e3dc] text-black focus:ring-0 w-5 h-5 cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+
+                    {/* Right Column: Simulated Live Preview */}
+                    <div className="lg:col-span-5 space-y-4">
+                      <section className="bg-white border border-[#e5e3dc] p-5 rounded-2xl flex flex-col justify-between h-full shadow-sm">
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-xs font-bold text-black">Slideshow Preview</h4>
+                            <span className="bg-[#86f2e4]/30 text-[#006f66] px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider animate-pulse">
+                              Live Preview
+                            </span>
+                          </div>
+
+                          {/* Simulated TV Frame */}
+                          <div className="aspect-[16/9] w-full rounded-xl bg-zinc-950 border border-[#e5e3dc] relative overflow-hidden flex items-center justify-center p-2 shadow-inner group">
+                            {/* Ballroom background mockup */}
+                            <div className="absolute inset-0 bg-cover bg-center opacity-85" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1200')" }}></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/30 z-10"></div>
+
+                            {/* Simulated overlays inside the live preview */}
+                            <div className="absolute inset-0 p-3 flex flex-col justify-between pointer-events-none z-20">
+                              <div className="flex justify-between items-start w-full">
+                                <div></div>
+                                {showQrOverlay && (
+                                  <div className="bg-white/95 border border-white/20 p-1.5 rounded-lg flex flex-col items-center gap-1 scale-[0.6] origin-top-right shadow-lg">
+                                    {event.qrCodeUrl ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img src={event.qrCodeUrl} alt="QR" className="w-12 h-12" />
+                                    ) : (
+                                      <div className="w-12 h-12 bg-slate-100 flex items-center justify-center text-[7px]">QR</div>
+                                    )}
+                                    <span className="text-[5px] font-bold text-black uppercase tracking-wider">SCAN TO JOIN</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex justify-between items-end w-full">
+                                {showNameOverlay && (
+                                  <span className="text-[8px] text-white/95 font-bold tracking-tight bg-black/40 px-2 py-0.75 rounded-md backdrop-blur-sm">
+                                    {eventName || event.name}
+                                  </span>
+                                )}
+                                <div></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-[#e5e3dc]">
+                          <a
+                            href={`/live/${event.slug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(
+                              buttonVariants({ variant: 'outline' }),
+                              "w-full rounded-xl text-xs border-[#e5e3dc] hover:bg-[#f6f3f5] text-[#0f172a] shadow-none gap-1.5 h-11 px-4 font-bold cursor-pointer justify-center flex items-center"
+                            )}
+                          >
+                            <span className="material-symbols-outlined text-lg">fullscreen</span>
+                            Preview in full screen
+                          </a>
+                        </div>
+                      </section>
+                    </div>
+                  </div>
                 )}
 
               </div>
