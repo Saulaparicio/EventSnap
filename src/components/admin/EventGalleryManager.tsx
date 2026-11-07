@@ -102,6 +102,8 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
   const [brandColor, setBrandColor] = useState<string>(wConfig?.brand_color || '#0F172A')
   const [customWatermark, setCustomWatermark] = useState<boolean>(wConfig?.enabled !== false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(wConfig?.hero_image_url || null)
+  const [uploadingHero, setUploadingHero] = useState(false)
 
   // Privacy & Restrictions states
   const [autoApprove, setAutoApprove] = useState<boolean>(sConfig?.auto_approve === true)
@@ -202,6 +204,33 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
     }
   }
 
+  async function handleHeroUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingHero(true)
+    const fd = new FormData()
+    fd.append('file', file)
+
+    try {
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: fd,
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Error al subir la imagen de portada')
+      } else {
+        setHeroImageUrl(data.url)
+        toast.success('Imagen de portada subida con éxito')
+      }
+    } catch {
+      toast.error('Error de red al subir la imagen')
+    } finally {
+      setUploadingHero(false)
+    }
+  }
+
   async function handleSaveSettings() {
     setSavingSettings(true)
     try {
@@ -221,6 +250,7 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
             text_position: textPosition,
             brand_color: brandColor,
             enabled: customWatermark,
+            hero_image_url: heroImageUrl || undefined,
           },
           slideshowConfig: {
             ...sConfig,
@@ -266,6 +296,7 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
     })
     setEventStatus(event.status)
     setLogoUrl(wConfig?.logo_url || null)
+    setHeroImageUrl(wConfig?.hero_image_url || null)
     setLogoPosition(wConfig?.logo_position || 'bottom-right')
     setLogoSize(wConfig?.logo_size || 15)
     setShowWatermarkText(wConfig?.text !== undefined ? Boolean(wConfig?.text) : true)
@@ -585,9 +616,12 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
               <ExternalLink className="w-3.5 h-3.5" />
               Slideshow
             </a>
-            {event.qrCodeUrl && (
+            {(event.qrCodeUrl || event.slug) && (
               <a
                 href={`/api/admin/events/${event.id}/qr/qr-${event.slug}.png`}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={`qr-${event.slug}.png`}
                 className={cn(
                   buttonVariants({ variant: 'outline' }),
                   "rounded-xl text-xs border-[#e5e3dc] hover:bg-[#f6f3f5] text-[#0f172a] shadow-none gap-1.5 h-10 px-4 font-semibold cursor-pointer"
@@ -1299,8 +1333,17 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                       <span className="text-[8px] font-bold tracking-wider text-orange-700 bg-orange-100/60 px-2 py-0.5 rounded-full uppercase">Table Tent 4x6"</span>
                       <h5 className="text-lg font-bold mt-2 leading-tight">{event.name}</h5>
                       {event.qrCodeUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={event.qrCodeUrl} alt="QR" className="w-36 h-36 mx-auto border p-1 rounded bg-white shadow-sm" />
+                        <a
+                          href={`/api/admin/events/${event.id}/qr/qr-${event.slug}.png`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={`qr-${event.slug}.png`}
+                          title="Abrir o descargar código QR"
+                          className="inline-block hover:opacity-90 transition-opacity"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={event.qrCodeUrl} alt="QR" className="w-36 h-36 mx-auto border p-1 rounded bg-white shadow-sm hover:ring-2 hover:ring-black/10 transition-all" />
+                        </a>
                       ) : (
                         <div className="w-32 h-32 border border-dashed flex items-center justify-center mx-auto text-xs text-gray-400">QR</div>
                       )}
@@ -1315,8 +1358,17 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                       <span className="text-[8px] font-bold tracking-wider text-teal-700 bg-teal-100/60 px-2 py-0.5 rounded-full uppercase">Flyer Carta/A4</span>
                       <h5 className="text-xl font-extrabold mt-2 leading-tight">{event.name}</h5>
                       {event.qrCodeUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={event.qrCodeUrl} alt="QR" className="w-40 h-40 mx-auto border p-1 rounded bg-white shadow-sm" />
+                        <a
+                          href={`/api/admin/events/${event.id}/qr/qr-${event.slug}.png`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={`qr-${event.slug}.png`}
+                          title="Abrir o descargar código QR"
+                          className="inline-block hover:opacity-90 transition-opacity"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={event.qrCodeUrl} alt="QR" className="w-40 h-40 mx-auto border p-1 rounded bg-white shadow-sm hover:ring-2 hover:ring-black/10 transition-all" />
+                        </a>
                       ) : (
                         <div className="w-32 h-32 border border-dashed flex items-center justify-center mx-auto text-xs text-gray-400">QR</div>
                       )}
@@ -1339,8 +1391,17 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                       </div>
                       
                       {event.qrCodeUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={event.qrCodeUrl} alt="QR" className="w-20 h-20 border p-0.5 rounded bg-white" />
+                        <a
+                          href={`/api/admin/events/${event.id}/qr/qr-${event.slug}.png`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={`qr-${event.slug}.png`}
+                          title="Abrir o descargar código QR"
+                          className="inline-block hover:opacity-90 transition-opacity"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={event.qrCodeUrl} alt="QR" className="w-20 h-20 border p-0.5 rounded bg-white hover:ring-2 hover:ring-black/10 transition-all" />
+                        </a>
                       ) : (
                         <div className="w-16 h-16 border border-dashed flex items-center justify-center text-[8px] text-gray-300">QR</div>
                       )}
@@ -1571,6 +1632,96 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                         </div>
                       </div>
 
+                      {/* Event Hero Cover Image */}
+                      <div className="space-y-3 pt-4 border-t border-[#e5e3dc]">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                            Imagen de Portada (Hero Invitados)
+                          </label>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Personaliza la imagen de fondo que verán tus invitados al escanear el QR en la pantalla de bienvenida.
+                          </p>
+                        </div>
+
+                        <div className="border-2 border-dashed border-[#e5e3dc] rounded-2xl p-6 flex flex-col items-center justify-center bg-[#fcf8fa] hover:bg-neutral-50 transition-colors cursor-pointer relative group">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleHeroUpload}
+                            disabled={uploadingHero}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <Upload className="w-8 h-8 text-[#76777d] group-hover:scale-110 transition-transform mb-2" />
+                          <p className="text-xs text-slate-500 text-center font-medium">
+                            {uploadingHero ? 'Subiendo imagen de portada...' : 'Suelta una foto aquí o haz clic para subir archivo'}
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-1">Recomendado: imagen horizontal de alta calidad</p>
+                        </div>
+
+                        {/* Direct URL input */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">O escribe una URL directa de imagen</label>
+                          <input
+                            type="text"
+                            value={heroImageUrl || ''}
+                            onChange={(e) => setHeroImageUrl(e.target.value.trim() || null)}
+                            placeholder="https://ejemplo.com/mi-portada.jpg"
+                            className="w-full bg-white border border-[#e5e3dc] rounded-xl p-2.5 text-xs focus:border-[#0d9488]"
+                          />
+                        </div>
+
+                        {/* Presets selector */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase">Fondos sugeridos:</label>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setHeroImageUrl('https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1200')}
+                              className="text-left p-2 rounded-xl border border-[#e5e3dc] bg-white hover:bg-slate-50 text-[10px] font-semibold text-slate-700 transition-colors"
+                            >
+                              🥂 Boda / Cena
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setHeroImageUrl('https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200')}
+                              className="text-left p-2 rounded-xl border border-[#e5e3dc] bg-white hover:bg-slate-50 text-[10px] font-semibold text-slate-700 transition-colors"
+                            >
+                              🎤 Summit / Tech
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setHeroImageUrl('https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200')}
+                              className="text-left p-2 rounded-xl border border-[#e5e3dc] bg-white hover:bg-slate-50 text-[10px] font-semibold text-slate-700 transition-colors"
+                            >
+                              ✨ Gala / Luces
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setHeroImageUrl('https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1200')}
+                              className="text-left p-2 rounded-xl border border-[#e5e3dc] bg-white hover:bg-slate-50 text-[10px] font-semibold text-slate-700 transition-colors"
+                            >
+                              🎉 Fiesta / Concierto
+                            </button>
+                          </div>
+                        </div>
+
+                        {heroImageUrl && (
+                          <div className="mt-3 relative w-full h-32 border border-[#e5e3dc] rounded-xl overflow-hidden group">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={heroImageUrl} alt="Hero Cover" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                type="button"
+                                onClick={() => setHeroImageUrl(null)}
+                                className="bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs px-3 py-1.5 font-bold flex items-center gap-1 shadow-md"
+                              >
+                                Restablecer a predeterminado
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Watermark toggle */}
                       <div className="flex items-center justify-between p-4 bg-[#fcf8fa] border border-[#e5e3dc] rounded-xl">
                         <div>
@@ -1729,6 +1880,23 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                       </div>
                       
                       <p className="text-[10px] text-slate-500 font-bold text-center">Simulador de Estampado Móvil</p>
+
+                      {/* Hero preview thumbnail */}
+                      <div className="w-full max-w-[220px] bg-white rounded-2xl shadow-md overflow-hidden border border-[#e5e3dc] mt-6 mb-2">
+                        <div
+                          className="aspect-[16/9] relative bg-cover bg-center flex flex-col justify-end p-2.5"
+                          style={{
+                            backgroundImage: `url('${heroImageUrl || 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1200'}')`
+                          }}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20"></div>
+                          <div className="relative z-10 space-y-0.5">
+                            <span className="text-[6px] text-white/80 uppercase font-bold tracking-wider">Portada Móvil</span>
+                            <p className="text-[9px] font-black text-white leading-tight line-clamp-1">{eventName}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-[9px] text-slate-400 text-center">Vista previa del Hero de invitados</p>
                     </section>
                   </div>
                 )}

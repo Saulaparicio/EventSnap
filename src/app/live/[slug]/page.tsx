@@ -39,7 +39,7 @@ export default async function LivePage({
         uploadedAt: p.uploadedAt.toISOString(),
       }))}
       config={event.slideshowConfig as { speed?: number; order?: string; transition?: string }}
-      qrCodeUrl={event.qrCodeUrl ?? null}
+      qrCodeUrl={event.qrCodeUrl || `/api/events/${slug}/qr`}
     />
   )
 }

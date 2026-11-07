@@ -49,6 +49,8 @@ export default function EditEventDialog({ event }: { event: Event }) {
   const [watermarkText, setWatermarkText] = useState(wConfig?.text || event.name)
   const [textPosition, setTextPosition] = useState<string>(wConfig?.text_position || 'bottom-center')
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(wConfig?.hero_image_url || null)
+  const [uploadingHero, setUploadingHero] = useState(false)
 
   const sConfig = event.slideshowConfig as any
   const [autoApprove, setAutoApprove] = useState(sConfig?.auto_approve === true)
@@ -80,6 +82,33 @@ export default function EditEventDialog({ event }: { event: Event }) {
     }
   }
 
+  async function handleHeroUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingHero(true)
+    const fd = new FormData()
+    fd.append('file', file)
+
+    try {
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: fd,
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Error al subir la imagen')
+      } else {
+        setHeroImageUrl(data.url)
+        toast.success('Imagen de portada subida con éxito')
+      }
+    } catch {
+      toast.error('Error de red al subir la imagen')
+    } finally {
+      setUploadingHero(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -99,6 +128,7 @@ export default function EditEventDialog({ event }: { event: Event }) {
             logo_size: Number(logoSize),
             text: showWatermarkText ? (watermarkText || name) : undefined,
             text_position: textPosition,
+            hero_image_url: heroImageUrl || undefined,
           },
           slideshowConfig: {
             ...sConfig,
@@ -265,6 +295,43 @@ export default function EditEventDialog({ event }: { event: Event }) {
                     <option value="bottom-right">Abajo - Derecha</option>
                   </select>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Hero Cover Image */}
+          <div className="space-y-2 pt-2 border-t border-border">
+            <Label className="text-xs font-medium text-primary">Imagen de Portada (Hero Invitados)</Label>
+            <div className="flex gap-2 items-center">
+              <Input
+                type="text"
+                value={heroImageUrl || ''}
+                onChange={(e) => setHeroImageUrl(e.target.value.trim() || null)}
+                placeholder="https://ejemplo.com/portada.jpg"
+                className="rounded-md border-border text-xs"
+              />
+              <label className="border border-border rounded-md px-3 py-2 text-xs font-semibold cursor-pointer hover:bg-neutral-50 shrink-0">
+                {uploadingHero ? 'Subiendo...' : 'Subir'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleHeroUpload}
+                  disabled={uploadingHero}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            {heroImageUrl && (
+              <div className="relative h-20 w-full rounded-md overflow-hidden border border-border mt-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={heroImageUrl} alt="Hero" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setHeroImageUrl(null)}
+                  className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center font-bold"
+                >
+                  ×
+                </button>
               </div>
             )}
           </div>

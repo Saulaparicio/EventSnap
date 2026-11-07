@@ -15,6 +15,7 @@ interface Props {
   slug: string
   eventName: string
   eventDate: Date | string
+  heroImageUrl?: string | null
 }
 
 interface ApprovedPhoto {
@@ -23,7 +24,7 @@ interface ApprovedPhoto {
   watermarkedUrl: string | null
 }
 
-export default function CameraUpload({ slug, eventName, eventDate }: Props) {
+export default function CameraUpload({ slug, eventName, eventDate, heroImageUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -36,6 +37,57 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment')
   const [uploading, setUploading] = useState(false)
   const [latestPhotos, setLatestPhotos] = useState<ApprovedPhoto[]>([])
+  const [orientationAngle, setOrientationAngle] = useState<number>(0)
+  const lastTapRef = useRef<number>(0)
+
+  // Listen to physical device orientation (screen orientation and gyroscope tilt)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleScreenOrientation = () => {
+      if (window.screen?.orientation) {
+        const angle = window.screen.orientation.angle || 0
+        setOrientationAngle(angle)
+      } else if (typeof window.orientation === 'number') {
+        setOrientationAngle(window.orientation)
+      }
+    }
+
+    // Fallback for devices with OS orientation lock enabled
+    const handleDeviceOrientation = (e: DeviceOrientationEvent) => {
+      if (e.gamma === null || e.beta === null) return
+      const { gamma, beta } = e
+
+      // Ignore when phone is flat on a table
+      if (Math.abs(beta) < 15 && Math.abs(gamma) < 15) return
+
+      if (gamma > 40 && Math.abs(beta) < 65) {
+        setOrientationAngle(90) // Landscape right
+      } else if (gamma < -40 && Math.abs(beta) < 65) {
+        setOrientationAngle(-90) // Landscape left
+      } else if (beta > 35) {
+        setOrientationAngle(0) // Portrait
+      } else if (beta < -45) {
+        setOrientationAngle(180) // Inverted portrait
+      }
+    }
+
+    window.addEventListener('orientationchange', handleScreenOrientation)
+    if (window.screen?.orientation) {
+      window.screen.orientation.addEventListener('change', handleScreenOrientation)
+    }
+    window.addEventListener('deviceorientation', handleDeviceOrientation)
+
+    handleScreenOrientation()
+
+    return () => {
+      window.removeEventListener('orientationchange', handleScreenOrientation)
+      if (window.screen?.orientation) {
+        window.screen.orientation.removeEventListener('change', handleScreenOrientation)
+      }
+      window.removeEventListener('deviceorientation', handleDeviceOrientation)
+    }
+  }, [])
 
   // Fetch approved photos for the welcome screen collage
   useEffect(() => {
@@ -106,17 +158,58 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
     const canvas = canvasRef.current
     if (!video || !canvas) return
 
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    const vw = video.videoWidth
+    const vh = video.videoHeight
+    if (!vw || !vh) return
+
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // If front camera is used, mirror the photo horizontally
-    if (facingMode === 'user') {
-      ctx.translate(canvas.width, 0)
-      ctx.scale(-1, 1)
+    const isStreamPortrait = vh > vw
+    const isDeviceLandscape = Math.abs(orientationAngle) === 90 || orientationAngle === 270
+
+    if (isDeviceLandscape && isStreamPortrait) {
+      // Swapped width & height for landscape image output when stream is portrait
+      canvas.width = vh
+      canvas.height = vw
+
+      ctx.save()
+      ctx.translate(canvas.width / 2, canvas.height / 2)
+      const rotAngle = orientationAngle === 90 ? -90 : 90
+      ctx.rotate((rotAngle * Math.PI) / 180)
+
+      if (facingMode === 'user') {
+        ctx.scale(-1, 1)
+      }
+
+      ctx.drawImage(video, -vw / 2, -vh / 2, vw, vh)
+      ctx.restore()
+    } else if (orientationAngle === 180) {
+      canvas.width = vw
+      canvas.height = vh
+
+      ctx.save()
+      ctx.translate(canvas.width / 2, canvas.height / 2)
+      ctx.rotate(Math.PI)
+
+      if (facingMode === 'user') {
+        ctx.scale(-1, 1)
+      }
+
+      ctx.drawImage(video, -vw / 2, -vh / 2, vw, vh)
+      ctx.restore()
+    } else {
+      canvas.width = vw
+      canvas.height = vh
+
+      ctx.save()
+      if (facingMode === 'user') {
+        ctx.translate(canvas.width, 0)
+        ctx.scale(-1, 1)
+      }
+      ctx.drawImage(video, 0, 0, vw, vh)
+      ctx.restore()
     }
-    ctx.drawImage(video, 0, 0)
 
     canvas.toBlob((blob) => {
       if (blob) {
@@ -127,7 +220,7 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
     setPreview(dataUrl)
     changeScreen('preview')
-  }, [facingMode, changeScreen])
+  }, [facingMode, orientationAngle, changeScreen])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -194,7 +287,7 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
         title: eventName,
         text: `Mira mi foto en el evento ${eventName}`,
         url: watermarkedUrl,
-      }).catch(() => {})
+      }).catch(() => { })
     } else {
       copyEventLink()
     }
@@ -243,7 +336,12 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
               {/* Opulent dark background overlay */}
               <div className="absolute inset-0 z-0">
                 <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[#0f172a]/90 z-10"></div>
-                <div className="w-full h-full bg-cover bg-center transition-transform duration-1000 scale-105" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1200')" }}></div>
+                <div
+                  className="w-full h-full bg-cover bg-center transition-transform duration-1000 scale-105"
+                  style={{
+                    backgroundImage: `url('${heroImageUrl || 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1200'}')`
+                  }}
+                ></div>
               </div>
 
               <div className="relative z-20 text-center max-w-2xl space-y-4">
@@ -291,7 +389,7 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
                     Bienvenido a **{eventName}**. En esta ocasión especial, estamos creando una memoria fotográfica colectiva en tiempo real. Utilizando **EventSnap**, cualquier foto que tomes o subas desde esta página se sumará de forma instantánea al carrusel interactivo proyectado en la pantalla del evento.
                   </p>
                 </div>
-                
+
                 <div className="md:col-span-4 bg-[#dae2fd]/40 p-6 rounded-2xl border border-[#e5e3dc] flex flex-col items-center justify-center text-center transition-all hover:-translate-y-1">
                   <div className="bg-white p-2.5 rounded-full mb-3 shadow-sm border border-[#e5e3dc]">
                     <span className="material-symbols-outlined text-2xl text-black">bolt</span>
@@ -430,76 +528,119 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
       )}
 
       {/* SCREEN 2: CAMERA VIEW FINDER */}
-      {screen === 'camera' && (
-        <div className="screen-transition fixed inset-0 h-[100dvh] w-full bg-black z-50 flex flex-col overflow-hidden">
-          {/* Top Bar */}
-          <div className="flex items-center justify-between px-4 py-3 text-white z-20 bg-gradient-to-b from-black/80 to-transparent shrink-0">
-            <button className="p-2 cursor-pointer" onClick={() => changeScreen('welcome')}>
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <span className="text-xs font-bold tracking-widest uppercase opacity-90 truncate max-w-[200px]">{eventName}</span>
-            <button
-              onClick={toggleFacingMode}
-              className="p-2 cursor-pointer text-white/90 hover:text-white"
-              title="Cambiar cámara"
-            >
-              <RotateCw className="w-5 h-5" />
-            </button>
-          </div>
+      {screen === 'camera' && (() => {
+        const iconRotateStyle = {
+          transform: `rotate(${-orientationAngle}deg)`,
+          transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+        }
 
-          {/* Viewfinder */}
-          <div className="flex-1 min-h-0 relative bg-zinc-950 flex items-center justify-center overflow-hidden">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
-            
-            {/* Watermark Live Overlay Preview */}
-            <div className="absolute bottom-4 right-4 glass-dark px-3 py-1.5 rounded-lg border border-white/15 scale-90 origin-bottom-right shadow-lg z-10">
-              <p className="text-[10px] font-semibold text-white/90 uppercase tracking-widest flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#0d9488]"></span>
-                {eventName}
-              </p>
-            </div>
-            
-            <canvas ref={canvasRef} className="hidden" />
-          </div>
-
-          {/* Camera Controls */}
-          <div className="bg-black/95 py-5 pb-10 px-8 flex items-center justify-around z-20 border-t border-zinc-900 shrink-0">
-            <button
-              onClick={toggleFacingMode}
-              className="text-white hover:bg-zinc-900 p-3 rounded-full transition-colors cursor-pointer flex flex-col items-center gap-1 text-[10px] font-medium"
-              title="Girar cámara"
-            >
-              <RotateCw className="w-6 h-6" />
-              <span>Girar</span>
-            </button>
-            
-            <button
-              onClick={capturePhoto}
-              className="rounded-full active:scale-95 transition-transform bg-transparent cursor-pointer p-1 border-4 border-white/40 hover:border-white shadow-xl"
-              title="Capturar foto"
-            >
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center active:bg-zinc-200">
-                <Camera className="w-7 h-7 text-black" />
+        return (
+          <div className="screen-transition fixed inset-0 h-[100dvh] w-full bg-black z-50 flex flex-col overflow-hidden">
+            {/* Top Bar */}
+            <div className="flex items-center justify-between px-4 py-3 text-white z-20 bg-gradient-to-b from-black/80 to-transparent shrink-0">
+              <button className="p-2 cursor-pointer" onClick={() => changeScreen('welcome')}>
+                <div style={iconRotateStyle}>
+                  <ArrowLeft className="w-5 h-5" />
+                </div>
+              </button>
+              <div style={iconRotateStyle} className="flex items-center">
+                <span className="text-xs font-bold tracking-widest uppercase opacity-90 truncate max-w-[180px]">{eventName}</span>
               </div>
-            </button>
+              <button
+                onClick={toggleFacingMode}
+                className="p-2 cursor-pointer text-white/90 hover:text-white"
+                title="Cambiar cámara frontal / trasera"
+              >
+                <div style={iconRotateStyle}>
+                  <RotateCw className="w-5 h-5" />
+                </div>
+              </button>
+            </div>
 
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="text-white hover:bg-zinc-900 p-3 rounded-full transition-colors cursor-pointer flex flex-col items-center gap-1 text-[10px] font-medium"
-              title="Subir de galería"
+            {/* Viewfinder */}
+            <div
+              className="flex-1 min-h-0 relative bg-zinc-950 flex items-center justify-center overflow-hidden cursor-pointer select-none"
+              onDoubleClick={toggleFacingMode}
+              onTouchEnd={() => {
+                const now = Date.now()
+                if (now - lastTapRef.current < 300) {
+                  toggleFacingMode()
+                  if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+                    window.navigator.vibrate(25)
+                  }
+                }
+                lastTapRef.current = now
+              }}
             >
-              <ImageIcon className="w-6 h-6" />
-              <span>Galería</span>
-            </button>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+
+              {/* Watermark Live Overlay Preview */}
+              <div
+                style={iconRotateStyle}
+                className="absolute bottom-4 right-4 glass-dark px-3 py-1.5 rounded-lg border border-white/15 scale-90 origin-bottom-right shadow-lg z-10"
+              >
+                <p className="text-[10px] font-semibold text-white/90 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0d9488]"></span>
+                  {eventName}
+                </p>
+              </div>
+
+              {/* Subtle hint for double tap */}
+              <div
+                style={iconRotateStyle}
+                className="absolute top-4 bg-black/40 backdrop-blur-sm text-white/70 text-[9px] px-2.5 py-1 rounded-full pointer-events-none"
+              >
+                Doble toque para cambiar cámara
+              </div>
+
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
+
+            {/* Camera Controls */}
+            <div className="bg-black/95 py-5 pb-10 px-8 flex items-center justify-around z-20 border-t border-zinc-900 shrink-0">
+              <button
+                onClick={toggleFacingMode}
+                className="text-white hover:bg-zinc-900 p-3 rounded-full transition-colors cursor-pointer flex flex-col items-center gap-1 text-[10px] font-medium"
+                title="Cambiar cámara frontal / trasera"
+              >
+                <div style={iconRotateStyle} className="flex flex-col items-center gap-1">
+                  <RotateCw className="w-6 h-6" />
+                  <span>Cámara</span>
+                </div>
+              </button>
+
+              <button
+                onClick={capturePhoto}
+                className="rounded-full active:scale-95 transition-transform bg-transparent cursor-pointer p-1 border-4 border-white/40 hover:border-white shadow-xl"
+                title="Capturar foto"
+              >
+                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center active:bg-zinc-200">
+                  <div style={iconRotateStyle}>
+                    <Camera className="w-7 h-7 text-black" />
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-white hover:bg-zinc-900 p-3 rounded-full transition-colors cursor-pointer flex flex-col items-center gap-1 text-[10px] font-medium"
+                title="Subir de galería"
+              >
+                <div style={iconRotateStyle} className="flex flex-col items-center gap-1">
+                  <ImageIcon className="w-6 h-6" />
+                  <span>Galería</span>
+                </div>
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* SCREEN 3: PHOTO PREVIEW */}
       {screen === 'preview' && (
@@ -521,7 +662,7 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
               <X className="w-4 h-4" />
             </button>
           </div>
-          
+
           <div className="flex-1 px-6 py-8 flex flex-col justify-between max-w-sm mx-auto w-full">
             <div className="space-y-2 text-center">
               <h2 className="text-xl font-bold text-[#0f172a]">¿Se ve bien?</h2>
@@ -529,7 +670,7 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
                 Tu foto se enviará al evento y se aplicará el diseño de marca de agua de manera automática.
               </p>
             </div>
-            
+
             <div className="flex flex-col gap-3">
               <button
                 onClick={sendPhoto}
@@ -542,7 +683,7 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
                   <>Enviar foto ✓</>
                 )}
               </button>
-              
+
               <button
                 onClick={() => changeScreen('camera')}
                 disabled={uploading}
@@ -566,7 +707,7 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
                 <path className="checkmark__check" d="M14.1 27.2l7.1 7.2 16.7-16.8" fill="none"></path>
               </svg>
             </div>
-            
+
             <div className="space-y-1">
               <h1 className="text-2xl font-bold text-[#0f172a]">¡Foto enviada!</h1>
               <p className="text-xs text-[#45464d] max-w-[280px]">Se proyectará en la pantalla del salón en unos instantes.</p>
@@ -598,7 +739,7 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
                   Descargar foto con marca de agua
                 </a>
               )}
-              
+
               <Link
                 href={`/e/${slug}/gallery`}
                 className={cn(
@@ -609,7 +750,7 @@ export default function CameraUpload({ slug, eventName, eventDate }: Props) {
                 <span className="material-symbols-outlined text-[18px]">photo_library</span>
                 Ver todas las fotos del evento
               </Link>
-              
+
               <button
                 onClick={reset}
                 className="w-full py-4 bg-[#0d9488] hover:bg-[#0d9488]/90 text-white rounded-xl font-semibold text-sm active:scale-95 transition-all cursor-pointer shadow-sm"

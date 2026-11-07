@@ -12,6 +12,9 @@ export default function QRDownloadButton({ eventId, slug }: Props) {
   return (
     <a
       href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      download={filename}
       className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-[#f6f3f5] transition-colors border border-[#e5e3dc] text-center w-full"
     >
       <span className="material-symbols-outlined text-md text-black">qr_code</span>

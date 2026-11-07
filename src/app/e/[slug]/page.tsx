@@ -10,7 +10,7 @@ export default async function GuestPage({
   const { slug } = await params
   const event = await prisma.event.findUnique({
     where: { slug },
-    select: { id: true, name: true, status: true, date: true },
+    select: { id: true, name: true, status: true, date: true, watermarkConfig: true },
   })
 
   if (!event || event.status === 'archived') notFound()
@@ -26,7 +26,15 @@ export default async function GuestPage({
     )
   }
 
+  const wConfig = (event.watermarkConfig as any) || {}
+  const heroImageUrl = wConfig?.hero_image_url || null
+
   return (
-    <CameraUpload slug={slug} eventName={event.name} eventDate={event.date} />
+    <CameraUpload
+      slug={slug}
+      eventName={event.name}
+      eventDate={event.date}
+      heroImageUrl={heroImageUrl}
+    />
   )
 }

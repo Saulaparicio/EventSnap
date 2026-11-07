@@ -26,12 +26,13 @@ export async function GET(
     const appUrl = getAppUrl(req)
     const eventUrl = `${appUrl}/e/${event.slug}`
     const qrBuffer = await generateQRBuffer(eventUrl)
+    const dispositionType = req.nextUrl.searchParams.get('download') === '1' ? 'attachment' : 'inline'
 
     return new Response(new Uint8Array(qrBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'image/png',
-        'Content-Disposition': `attachment; filename="qr-${event.slug}.png"`,
+        'Content-Disposition': `${dispositionType}; filename="qr-${event.slug}.png"`,
         'Content-Length': qrBuffer.length.toString(),
         'Cache-Control': 'no-store',
       },
