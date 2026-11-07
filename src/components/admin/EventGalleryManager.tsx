@@ -118,6 +118,7 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
   const [slideshowOrder, setSlideshowOrder] = useState<string>(sConfig?.order || 'newest_first')
   const [showQrOverlay, setShowQrOverlay] = useState<boolean>(sConfig?.show_qr !== false)
   const [showNameOverlay, setShowNameOverlay] = useState<boolean>(sConfig?.show_name !== false)
+  const [slideshowQrPosition, setSlideshowQrPosition] = useState<string>(sConfig?.qr_position || 'bottom-right')
 
   const [savingSettings, setSavingSettings] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -264,6 +265,7 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
             order: slideshowOrder,
             show_qr: showQrOverlay,
             show_name: showNameOverlay,
+            qr_position: slideshowQrPosition,
           },
         }),
       })
@@ -2091,6 +2093,41 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                             />
                           </div>
 
+                          {/* Initial QR Position Selector */}
+                          {showQrOverlay && (
+                            <div className="space-y-2.5 pl-4 border-l-2 border-[#0d9488]/40 bg-[#f8fafc] p-3 rounded-xl">
+                              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                                Posición Inicial del Código QR
+                              </label>
+                              <div className="grid grid-cols-2 gap-2">
+                                {[
+                                  { val: 'bottom-right', label: 'Abajo Derecha', icon: '↘' },
+                                  { val: 'bottom-left', label: 'Abajo Izquierda', icon: '↙' },
+                                  { val: 'top-right', label: 'Arriba Derecha', icon: '↗' },
+                                  { val: 'top-left', label: 'Arriba Izquierda', icon: '↖' },
+                                ].map((pos) => (
+                                  <button
+                                    key={pos.val}
+                                    type="button"
+                                    onClick={() => setSlideshowQrPosition(pos.val)}
+                                    className={cn(
+                                      "px-3 py-2 rounded-xl text-xs font-semibold transition-all border flex items-center justify-between cursor-pointer",
+                                      slideshowQrPosition === pos.val
+                                        ? "bg-black text-white border-black shadow-sm"
+                                        : "bg-white border-[#e5e3dc] text-[#0f172a] hover:bg-[#f1f5f9]"
+                                    )}
+                                  >
+                                    <span>{pos.label}</span>
+                                    <span className="font-mono text-sm opacity-60">{pos.icon}</span>
+                                  </button>
+                                ))}
+                              </div>
+                              <p className="text-[10px] text-slate-500 leading-normal">
+                                💡 En la pantalla de presentación en vivo, el anfitrión puede arrastrar libremente el código QR con el mouse o la pantalla táctil a cualquier lugar de la pantalla.
+                              </p>
+                            </div>
+                          )}
+
                           {/* Show event name overlay */}
                           <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
@@ -2127,9 +2164,21 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
 
                             {/* Simulated overlays inside the live preview */}
                             <div className="absolute inset-0 p-3 flex flex-col justify-between pointer-events-none z-20">
+                              {/* Top row */}
                               <div className="flex justify-between items-start w-full">
-                                <div></div>
-                                {showQrOverlay && (
+                                {showQrOverlay && slideshowQrPosition === 'top-left' ? (
+                                  <div className="bg-white/95 border border-white/20 p-1.5 rounded-lg flex flex-col items-center gap-1 scale-[0.6] origin-top-left shadow-lg">
+                                    {event.qrCodeUrl ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img src={event.qrCodeUrl} alt="QR" className="w-12 h-12" />
+                                    ) : (
+                                      <div className="w-12 h-12 bg-slate-100 flex items-center justify-center text-[7px]">QR</div>
+                                    )}
+                                    <span className="text-[5px] font-bold text-black uppercase tracking-wider">SCAN TO JOIN</span>
+                                  </div>
+                                ) : <div />}
+
+                                {showQrOverlay && slideshowQrPosition === 'top-right' && (
                                   <div className="bg-white/95 border border-white/20 p-1.5 rounded-lg flex flex-col items-center gap-1 scale-[0.6] origin-top-right shadow-lg">
                                     {event.qrCodeUrl ? (
                                       // eslint-disable-next-line @next/next/no-img-element
@@ -2142,13 +2191,38 @@ export default function EventGalleryManager({ event, initialPhotos }: Props) {
                                 )}
                               </div>
 
+                              {/* Bottom row */}
                               <div className="flex justify-between items-end w-full">
-                                {showNameOverlay && (
-                                  <span className="text-[8px] text-white/95 font-bold tracking-tight bg-black/40 px-2 py-0.75 rounded-md backdrop-blur-sm">
-                                    {eventName || event.name}
-                                  </span>
+                                <div className="flex flex-col gap-1 items-start">
+                                  {showQrOverlay && slideshowQrPosition === 'bottom-left' && (
+                                    <div className="bg-white/95 border border-white/20 p-1.5 rounded-lg flex flex-col items-center gap-1 scale-[0.6] origin-bottom-left shadow-lg mb-1">
+                                      {event.qrCodeUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={event.qrCodeUrl} alt="QR" className="w-12 h-12" />
+                                      ) : (
+                                        <div className="w-12 h-12 bg-slate-100 flex items-center justify-center text-[7px]">QR</div>
+                                      )}
+                                      <span className="text-[5px] font-bold text-black uppercase tracking-wider">SCAN TO JOIN</span>
+                                    </div>
+                                  )}
+                                  {showNameOverlay && (
+                                    <span className="text-[8px] text-white/95 font-bold tracking-tight bg-black/40 px-2 py-0.75 rounded-md backdrop-blur-sm">
+                                      {eventName || event.name}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {showQrOverlay && slideshowQrPosition === 'bottom-right' && (
+                                  <div className="bg-white/95 border border-white/20 p-1.5 rounded-lg flex flex-col items-center gap-1 scale-[0.6] origin-bottom-right shadow-lg">
+                                    {event.qrCodeUrl ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img src={event.qrCodeUrl} alt="QR" className="w-12 h-12" />
+                                    ) : (
+                                      <div className="w-12 h-12 bg-slate-100 flex items-center justify-center text-[7px]">QR</div>
+                                    )}
+                                    <span className="text-[5px] font-bold text-black uppercase tracking-wider">SCAN TO JOIN</span>
+                                  </div>
                                 )}
-                                <div></div>
                               </div>
                             </div>
                           </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Image from 'next/image'
-import { Play, Tv, Sparkles, QrCode } from 'lucide-react'
+import { Play, Tv, Sparkles, QrCode, Move, RotateCw, RotateCcw, Maximize } from 'lucide-react'
 
 interface Photo {
   id: string
@@ -15,9 +15,18 @@ interface Props {
   eventName: string
   slug: string
   initialPhotos: Photo[]
-  config: { speed?: number; order?: string; transition?: string }
+  config: {
+    speed?: number
+    order?: string
+    transition?: string
+    show_qr?: boolean
+    show_name?: boolean
+    qr_position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
+  }
   qrCodeUrl: string | null
 }
+
+type QrCorner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
 
 interface Particle {
   id: number
@@ -36,7 +45,39 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
   )
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isFullscreenActive, setIsFullscreenActive] = useState(false)
+  const [hasStartedPresentation, setHasStartedPresentation] = useState(false)
   const [particles, setParticles] = useState<Particle[]>([])
+
+  // Moveable QR State
+  const [qrCorner, setQrCorner] = useState<QrCorner>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`eventsnap_slideshow_qr_corner_${slug}`)
+      if (saved === 'bottom-right' || saved === 'bottom-left' || saved === 'top-right' || saved === 'top-left') {
+        return saved
+      }
+    }
+    return config.qr_position || 'bottom-right'
+  })
+
+  const [customPos, setCustomPos] = useState<{ x: number; y: number } | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`eventsnap_slideshow_qr_pos_${slug}`)
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+            return parsed
+          }
+        } catch { }
+      }
+    }
+    return null
+  })
+
+  const [isDragging, setIsDragging] = useState(false)
+  const qrRef = useRef<HTMLDivElement>(null)
+  const dragStartRef = useRef<{ pointerX: number; pointerY: number; startX: number; startY: number }>({ pointerX: 0, pointerY: 0, startX: 0, startY: 0 })
+  const hasMovedRef = useRef(false)
 
   // Double layer crossfade states
   const [activeLayer, setActiveLayer] = useState<1 | 2>(1)
@@ -77,9 +118,11 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
         await document.documentElement.requestFullscreen()
       }
       setIsFullscreenActive(true)
+      setHasStartedPresentation(true)
     } catch (err) {
       console.error('Error entering fullscreen:', err)
       setIsFullscreenActive(true) // fallback
+      setHasStartedPresentation(true)
     }
   }
 
@@ -92,6 +135,107 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
       }
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  // QR Drag handlers (Mouse & Touch via PointerEvents)
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    // Do not initiate drag if user clicked an action button inside the mini-toolbar
+    if ((e.target as HTMLElement).closest('button')) return
+    if (e.button !== 0 && e.pointerType === 'mouse') return
+    const el = qrRef.current
+    if (!el) return
+
+    const rect = el.getBoundingClientRect()
+    dragStartRef.current = {
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      startX: rect.left,
+      startY: rect.top,
+    }
+    hasMovedRef.current = false
+
+    const handlePointerMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - dragStartRef.current.pointerX
+      const dy = ev.clientY - dragStartRef.current.pointerY
+      if (Math.hypot(dx, dy) > 4) {
+        if (!hasMovedRef.current) {
+          hasMovedRef.current = true
+          setIsDragging(true)
+        }
+        const width = qrRef.current?.offsetWidth || 260
+        const height = qrRef.current?.offsetHeight || 130
+        const maxX = Math.max(12, window.innerWidth - width - 12)
+        const maxY = Math.max(12, window.innerHeight - height - 12)
+        const nextX = Math.min(Math.max(12, dragStartRef.current.startX + dx), maxX)
+        const nextY = Math.min(Math.max(12, dragStartRef.current.startY + dy), maxY)
+        setCustomPos({ x: nextX, y: nextY })
+      }
+    }
+
+    const handlePointerUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('pointercancel', handlePointerUp)
+
+      if (hasMovedRef.current) {
+        setIsDragging(false)
+        const width = qrRef.current?.offsetWidth || 260
+        const height = qrRef.current?.offsetHeight || 130
+        const maxX = Math.max(12, window.innerWidth - width - 12)
+        const maxY = Math.max(12, window.innerHeight - height - 12)
+        const dx = ev.clientX - dragStartRef.current.pointerX
+        const dy = ev.clientY - dragStartRef.current.pointerY
+        const finalX = Math.min(Math.max(12, dragStartRef.current.startX + dx), maxX)
+        const finalY = Math.min(Math.max(12, dragStartRef.current.startY + dy), maxY)
+        const pos = { x: finalX, y: finalY }
+        setCustomPos(pos)
+        try {
+          localStorage.setItem(`eventsnap_slideshow_qr_pos_${slug}`, JSON.stringify(pos))
+        } catch { }
+      }
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    window.addEventListener('pointercancel', handlePointerUp)
+  }
+
+  const cycleCorner = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const corners: QrCorner[] = ['bottom-right', 'bottom-left', 'top-left', 'top-right']
+    const next = corners[(corners.indexOf(qrCorner) + 1) % corners.length]
+    setCustomPos(null)
+    setQrCorner(next)
+    try {
+      localStorage.removeItem(`eventsnap_slideshow_qr_pos_${slug}`)
+      localStorage.setItem(`eventsnap_slideshow_qr_corner_${slug}`, next)
+    } catch { }
+  }
+
+  const resetPosition = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setCustomPos(null)
+    const initialCorner = config.qr_position || 'bottom-right'
+    setQrCorner(initialCorner)
+    try {
+      localStorage.removeItem(`eventsnap_slideshow_qr_pos_${slug}`)
+      localStorage.removeItem(`eventsnap_slideshow_qr_corner_${slug}`)
+    } catch { }
+  }
+
+  const getCornerClasses = (corner: QrCorner) => {
+    switch (corner) {
+      case 'bottom-left':
+        return config.show_name !== false ? 'bottom-28 left-8' : 'bottom-8 left-8'
+      case 'top-left':
+        return 'top-20 left-8'
+      case 'top-right':
+        return 'top-8 right-8'
+      case 'bottom-right':
+      default:
+        return 'bottom-8 right-8'
     }
   }
 
@@ -111,9 +255,9 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
           const filtered = prev.filter((p) => apiIds.has(p.id))
           const existingIds = new Set(filtered.map((p) => p.id))
           const added = newPhotos.filter((p) => !existingIds.has(p.id))
-          
+
           if (added.length === 0 && filtered.length === prev.length) return prev
-          
+
           const all = config.order === 'random'
             ? [...filtered, ...added].sort(() => Math.random() - 0.5)
             : [...filtered, ...added]
@@ -161,26 +305,26 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
       setLayer1Photo(nextPhoto)
       setActiveLayer(1)
     }
-    
+
     setCurrentIndex(nextIndex)
   }, [photos, currentIndex, activeLayer])
 
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current)
-    if (isFullscreenActive && photos.length > 1) {
+    if ((isFullscreenActive || hasStartedPresentation) && photos.length > 1) {
       intervalRef.current = setInterval(advance, speed)
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [advance, speed, isFullscreenActive, photos.length])
+  }, [advance, speed, isFullscreenActive, hasStartedPresentation, photos.length])
 
   // URL of guest upload
   const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const eventUrl = `${appUrl}/e/${slug}`
 
   // Render Waiting Screen (Instructions before fullscreen)
-  if (!isFullscreenActive) {
+  if (!isFullscreenActive && !hasStartedPresentation) {
     return (
       <div className="fixed inset-0 bg-[#0f172a] flex flex-col items-center justify-center gap-8 text-white p-6 text-center select-none font-sans">
         <div className="space-y-3 max-w-lg">
@@ -194,18 +338,27 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
           </p>
         </div>
 
-        <button
-          onClick={enterFullscreen}
-          className="px-8 py-4 bg-white text-black font-semibold rounded-xl text-md hover:scale-105 active:scale-95 transition-all shadow-xl hover:shadow-white/5 flex items-center gap-2.5 cursor-pointer"
-        >
-          <Play className="w-5 h-5 fill-current" />
-          Iniciar pantalla completa
-        </button>
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <button
+            onClick={enterFullscreen}
+            className="px-8 py-4 bg-white text-black font-semibold rounded-xl text-md hover:scale-105 active:scale-95 transition-all shadow-xl hover:shadow-white/5 flex items-center gap-2.5 cursor-pointer"
+          >
+            <Play className="w-5 h-5 fill-current" />
+            Iniciar pantalla completa
+          </button>
+          <button
+            onClick={() => setHasStartedPresentation(true)}
+            className="px-5 py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-xl text-sm transition-all border border-slate-700 flex items-center gap-2 cursor-pointer"
+          >
+            <Maximize className="w-4 h-4" />
+            Ver en esta ventana
+          </button>
+        </div>
 
-        <div className="mt-6 border border-slate-800 rounded-2xl p-5 bg-slate-900/40 backdrop-blur max-w-xs flex flex-col items-center gap-3">
+        <div className="mt-4 border border-slate-800 rounded-2xl p-5 bg-slate-900/40 backdrop-blur max-w-xs flex flex-col items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={`/api/events/${slug}/qr`}
+            src={qrCodeUrl || `/api/events/${slug}/qr`}
             alt="QR del evento"
             className="w-28 h-28 rounded-lg object-contain bg-white p-1"
           />
@@ -228,9 +381,8 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
       <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden">
         {/* Layer 1 */}
         <div
-          className={`absolute inset-0 transition-opacity duration-1000 ${
-            activeLayer === 1 ? 'opacity-100' : 'opacity-0'
-          }`}
+          className={`absolute inset-0 transition-opacity duration-1000 ${activeLayer === 1 ? 'opacity-100' : 'opacity-0'
+            }`}
         >
           {layer1Photo && (
             <>
@@ -254,9 +406,8 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
 
         {/* Layer 2 */}
         <div
-          className={`absolute inset-0 transition-opacity duration-1000 ${
-            activeLayer === 2 ? 'opacity-100' : 'opacity-0'
-          }`}
+          className={`absolute inset-0 transition-opacity duration-1000 ${activeLayer === 2 ? 'opacity-100' : 'opacity-0'
+            }`}
         >
           {layer2Photo && (
             <>
@@ -277,7 +428,7 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
             </>
           )}
         </div>
-        
+
         {/* Cinematic overlays */}
         <div className="absolute inset-0 vignette pointer-events-none z-10" />
         <div className="absolute inset-0 bg-black/20 pointer-events-none z-10" />
@@ -302,7 +453,7 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
       </div>
 
       {/* Top Left: Live Feed indicator */}
-      <div className="absolute top-8 left-8 z-20 flex items-center gap-2">
+      <div className="absolute top-8 left-8 z-20 flex items-center gap-2 pointer-events-none">
         <div className="flex items-center gap-2 bg-black/45 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 slide-up shadow-lg">
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
@@ -312,12 +463,14 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
         </div>
       </div>
 
-      {/* Bottom overlay UI */}
-      <div className="absolute bottom-0 left-0 w-full z-20 p-8 flex flex-col md:flex-row items-end justify-between gap-6">
-        
-        {/* Left: Event Details */}
-        <div className="flex flex-col gap-2 slide-up" style={{ animationDelay: '0.2s' }}>
-          <div className="glass-dark px-6 py-4 rounded-2xl flex flex-col shadow-2xl">
+      {/* Left Bottom: Event Details */}
+      {config.show_name !== false && (
+        <div
+          className="absolute bottom-8 left-8 z-20 flex flex-col gap-2 slide-up pointer-events-auto"
+          style={{ animationDelay: '0.2s' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="glass-dark px-6 py-4 rounded-2xl flex flex-col shadow-2xl border border-white/10">
             <span className="text-xl md:text-2xl font-bold text-white leading-tight">{eventName}</span>
             <div className="flex items-center gap-2 mt-1.5 text-xs text-white/60 font-sans">
               <span>Slideshow en vivo</span>
@@ -326,36 +479,84 @@ export default function Slideshow({ eventId, eventName, slug, initialPhotos, con
             </div>
           </div>
         </div>
+      )}
 
-        {/* Right: QR Code invite */}
-        <div className="flex items-center gap-4 slide-up z-20" style={{ animationDelay: '0.4s' }}>
-          <div className="hidden sm:flex flex-col items-end gap-1 text-right max-w-[200px] text-white">
-            <h3 className="text-sm font-bold flex items-center gap-1">
-              <Sparkles className="w-4 h-4 text-[#86f2e4]" />
-              Sube tus fotos
-            </h3>
-            <p className="text-[10px] text-white/60 leading-normal font-sans">
-              Escanea el código para unirte al álbum en vivo y subir tus capturas.
-            </p>
-          </div>
-          
-          <div className="p-2 qr-gradient rounded-xl shadow-2xl border border-white/10 transition-transform hover:scale-105 duration-300">
-            <div className="relative w-24 h-24 md:w-28 md:h-28 bg-white flex items-center justify-center rounded-lg overflow-hidden border border-[#e5e3dc]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`/api/events/${slug}/qr`}
-                alt="QR del evento"
-                className="w-full h-full p-1 object-contain"
-              />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 hover:opacity-100 transition-opacity">
-                <div className="bg-white p-1 rounded-md shadow-md border border-[#e5e3dc]">
-                  <QrCode className="w-5 h-5 text-black" />
-                </div>
+      {/* Movable QR Code Invite Widget */}
+      {config.show_qr !== false && (
+        <div
+          ref={qrRef}
+          onPointerDown={handlePointerDown}
+          onClick={(e) => e.stopPropagation()}
+          style={
+            customPos
+              ? {
+                position: 'fixed',
+                left: `${customPos.x}px`,
+                top: `${customPos.y}px`,
+                touchAction: 'none',
+              }
+              : {
+                touchAction: 'none',
+              }
+          }
+          className={`fixed z-30 group select-none transition-all duration-150 ${!customPos ? getCornerClasses(qrCorner) : ''
+            } ${isDragging ? 'cursor-grabbing scale-105 shadow-2xl ring-2 ring-[#86f2e4]' : 'cursor-grab'}`}
+        >
+          <div className="relative bg-black/65 backdrop-blur-xl border border-white/15 p-3 rounded-2xl shadow-2xl flex items-center gap-3.5 hover:border-white/35 transition-all">
+            {/* Quick-Controls Pill Bar on Hover / Focus */}
+            <div className="absolute -top-3.5 right-2 flex items-center gap-1.5 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity z-10">
+              {customPos && (
+                <button
+                  type="button"
+                  onClick={resetPosition}
+                  title="Restablecer posición inicial a la esquina"
+                  className="bg-black/90 hover:bg-black text-white/80 hover:text-white px-2 py-0.5 rounded-full text-[9px] font-bold border border-white/20 flex items-center gap-1 backdrop-blur cursor-pointer shadow-md transition-colors"
+                >
+                  <RotateCcw className="w-2.5 h-2.5 text-amber-400" />
+                  <span>Restaurar</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={cycleCorner}
+                title="Mover a otra esquina (Abajo Der, Abajo Izq, Arriba Izq, Arriba Der)"
+                className="bg-black/90 hover:bg-black text-white/80 hover:text-white px-2 py-0.5 rounded-full text-[9px] font-bold border border-white/20 flex items-center gap-1 backdrop-blur cursor-pointer shadow-md transition-colors"
+              >
+                <RotateCw className="w-2.5 h-2.5 text-[#86f2e4]" />
+                <span>Mover esquina</span>
+              </button>
+              <div className="bg-black/90 text-[#86f2e4] px-2 py-0.5 rounded-full text-[9px] font-bold border border-white/20 flex items-center gap-1 backdrop-blur cursor-grab">
+                <Move className="w-2.5 h-2.5" />
+                <span>Arrastrar</span>
+              </div>
+            </div>
+
+            {/* Invite text */}
+            <div className="hidden sm:flex flex-col items-start gap-1 max-w-[155px] text-white">
+              <h3 className="text-xs font-bold flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-[#86f2e4]" />
+                Sube tus fotos
+              </h3>
+              <p className="text-[10px] text-white/60 leading-tight font-sans">
+                Escanea el código QR para proyectar tus capturas en vivo.
+              </p>
+            </div>
+
+            {/* QR Box */}
+            <div className="p-1.5 qr-gradient rounded-xl shadow-lg border border-white/10 shrink-0">
+              <div className="relative w-20 h-20 md:w-24 md:h-24 bg-white flex items-center justify-center rounded-lg overflow-hidden border border-[#e5e3dc]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={qrCodeUrl || `/api/events/${slug}/qr`}
+                  alt="QR del evento"
+                  className="w-full h-full p-1 object-contain pointer-events-none select-none"
+                  draggable={false}
+                />
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

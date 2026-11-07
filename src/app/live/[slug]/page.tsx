@@ -38,7 +38,14 @@ export default async function LivePage({
         url: p.watermarkedUrl ?? '',
         uploadedAt: p.uploadedAt.toISOString(),
       }))}
-      config={event.slideshowConfig as { speed?: number; order?: string; transition?: string }}
+      config={(event.slideshowConfig as {
+        speed?: number
+        order?: string
+        transition?: string
+        show_qr?: boolean
+        show_name?: boolean
+        qr_position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
+      }) || {}}
       qrCodeUrl={event.qrCodeUrl || `/api/events/${slug}/qr`}
     />
   )
